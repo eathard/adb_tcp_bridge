@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADB TCP 桥 — 控制台 UI 原型（待确认）</title>
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#161920; --bg3:#1d212a;
+    --line:#272c37; --line2:#333a48;
+    --tx:#e6e9ef; --tx2:#9aa4b6; --tx3:#6b7488;
+    --ac:#4c8dff; --ac2:#2f6fe0;
+    --ok:#3ecf8e; --warn:#f0b429; --err:#f2555a;
+    --mono:"Cascadia Code","Consolas","SF Mono",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--tx);
+    font:14px/1.6 "Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    padding:24px; min-height:100vh;
+  }
+  .wrap{max-width:1280px;margin:0 auto}
+
+  /* ===== 原型标注条 ===== */
+  .proto-note{
+    background:linear-gradient(90deg,#1a2333,#151a24);
+    border:1px solid #2f4763; border-left:3px solid var(--ac);
+    border-radius:8px; padding:12px 16px; margin-bottom:20px;
+    font-size:13px; color:var(--tx2);
+  }
+  .proto-note b{color:var(--ac)}
+
+  /* ===== 窗口外框 ===== */
+  .window{
+    border:1px solid var(--line2); border-radius:12px;
+    overflow:hidden; box-shadow:0 24px 64px rgba(0,0,0,.55);
+    background:var(--bg2);
+  }
+  .titlebar{
+    height:38px; background:var(--bg3); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; padding:0 14px; gap:10px;
+    -webkit-user-select:none;user-select:none;
+  }
+  .dots{display:flex;gap:7px}
+  .dots i{width:11px;height:11px;border-radius:50%;display:block}
+  .dots i:nth-child(1){background:#ff5f57}
+  .dots i:nth-child(2){background:#febc2e}
+  .dots i:nth-child(3){background:#28c840}
+  .titlebar .t{font-size:12.5px;color:var(--tx2);font-weight:600}
+
+  /* ===== 主体布局 ===== */
+  .body{display:flex;min-height:640px}
+  .side{
+    width:212px;background:#12151c;border-right:1px solid var(--line);
+    padding:14px 10px;flex-shrink:0;
+  }
+  .brand{
+    display:flex;align-items:center;gap:10px;padding:6px 8px 16px;
+    margin-bottom:8px;border-bottom:1px solid var(--line);
+  }
+  .brand .logo{
+    width:32px;height:32px;border-radius:8px;flex-shrink:0;
+    background:linear-gradient(135deg,var(--ac),#7b5cff);
+    display:flex;align-items:center;justify-content:center;
+    font-size:15px;
+  }
+  .brand b{font-size:13.5px;display:block;line-height:1.3}
+  .brand span{font-size:11px;color:var(--tx3)}
+
+  .nav{display:flex;flex-direction:column;gap:2px;margin-bottom:16px}
+  .nav button{
+    background:none;border:0;color:var(--tx2);text-align:left;
+    padding:9px 11px;border-radius:7px;cursor:pointer;font-size:13px;
+    display:flex;align-items:center;gap:9px;font-family:inherit;
+  }
+  .nav button:hover{background:#1a1e27;color:var(--tx)}
+  .nav button.on{background:var(--ac);color:#fff;font-weight:600}
+  .nav .ic{width:16px;text-align:center;font-size:13px;opacity:.9}
+  .nav .pill{
+    margin-left:auto;background:#3a2020;color:#ff9a9e;
+    padding:1px 6px;border-radius:9px;font-size:10.5px;font-weight:700;
+  }
+
+  .side-foot{
+    margin-top:auto;padding:11px;background:#171b24;
+    border:1px solid var(--line);border-radius:9px;
+  }
+  .side-foot .r{
+    display:flex;justify-content:space-between;
+    font-size:11.5px;margin-bottom:5px;color:var(--tx3);
+  }
+  .side-foot .r:last-child{margin:0}
+  .side-foot .r b{color:var(--tx2);font-weight:600}
+
+  .main{flex:1;padding:20px 24px;overflow:hidden}
+  .page{display:none}
+  .page.on{display:block}
+
+  .hd{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    gap:16px;margin-bottom:18px;flex-wrap:wrap;
+  }
+  .hd h2{font-size:19px;font-weight:600;letter-spacing:.2px}
+  .hd p{font-size:12.5px;color:var(--tx3);margin-top:3px}
+  .hd-acts{display:flex;gap:8px;align-items:center}
+
+  /* ===== 控件 ===== */
+  .btn{
+    background:var(--bg3);border:1px solid var(--line2);color:var(--tx);
+    padding:7px 15px;border-radius:7px;cursor:pointer;font-size:13px;
+    font-family:inherit;display:inline-flex;align-items:center;gap:6px;
+  }
+  .btn:hover{background:#262b36;border-color:#414a5c}
+  .btn.pri{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+  .btn.pri:hover{background:var(--ac2)}
+  .btn.danger{background:#3a1f22;border-color:#6b3038;color:#ff9a9e}
+  .btn.danger:hover{background:#4a272b}
+  .btn.sm{padding:4px 10px;font-size:12px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  input[type=text],input[type=number],select{
+    background:#0e1116;border:1px solid var(--line2);color:var(--tx);
+    padding:7px 10px;border-radius:7px;font-size:13px;width:100%;
+    font-family:inherit;
+  }
+  input:focus,select:focus{outline:0;border-color:var(--ac)}
+  label.fl{display:block;font-size:12px;color:var(--tx2);margin-bottom:6px}
+  .hint{font-size:11.5px;color:var(--tx3);margin-top:5px;line-height:1.5}
+  .hint.warn{color:var(--warn)}
+
+  /* ===== 卡片 ===== */
+  .card{
+    background:var(--bg3);border:1px solid var(--line);
+    border-radius:10px;padding:16px;margin-bottom:14px;
+  }
+  .card h3{
+    font-size:13px;font-weight:600;color:var(--tx);
+    margin-bottom:12px;display:flex;align-items:center;gap:8px;
+  }
+  .card h3 .tag{
+    font-size:10.5px;font-weight:600;padding:1.5px 7px;border-radius:5px;
+    background:#253044;color:#8fb0e8;
+  }
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:1000px){.g3,.g4{grid-template-columns:1fr 1fr}}
+
+  /* 状态大卡 */
+  .stat{
+    background:var(--bg3);border:1px solid var(--line);
+    border-radius:10px;padding:14px;
+  }
+  .stat .lb{font-size:11.5px;color:var(--tx3);margin-bottom:6px}
+  .stat .vl{font-size:20px;font-weight:600;font-family:var(--mono)}
+  .stat .ex{font-size:11px;color:var(--tx3);margin-top:4px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .status-hero{
+    display:flex;align-items:center;gap:18px;
+    background:linear-gradient(100deg,#14251d,#161b24 60%);
+    border:1px solid #24513c;border-radius:11px;
+    padding:17px 20px;margin-bottom:16px;
+  }
+  .status-hero.off{
+    background:linear-gradient(100deg,#25161a,#161b24 60%);
+    border-color:#5a2b31;
+  }
+  .lamp{
+    width:13px;height:13px;border-radius:50%;background:var(--ok);
+    box-shadow:0 0 0 5px rgba(62,207,142,.16);flex-shrink:0;
+  }
+  .status-hero.off .lamp{
+    background:var(--err);box-shadow:0 0 0 5px rgba(242,85,90,.16);
+  }
+  .status-hero .info{flex:1}
+  .status-hero .info b{font-size:16px;display:block;margin-bottom:3px}
+  .status-hero .info span{font-size:12.5px;color:var(--tx2);font-family:var(--mono)}
+
+  /* ===== 表格 ===== */
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{
+    text-align:left;padding:8px 10px;color:var(--tx3);font-weight:600;
+    border-bottom:1px solid var(--line2);font-size:11.5px;
+    text-transform:uppercase;letter-spacing:.4px;
+  }
+  td{padding:9px 10px;border-bottom:1px solid #20242e}
+  tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:#1a1f29}
+  td.mono,.mono{font-family:var(--mono)}
+  .empty{text-align:center;color:var(--tx3);padding:30px 0;font-size:12.5px}
+
+  /* 徽标 */
+  .bg{
+    display:inline-block;padding:1.5px 8px;border-radius:11px;
+    font-size:11px;font-weight:600;
+  }
+  .bg.ok{background:rgba(62,207,142,.15);color:var(--ok)}
+  .bg.warn{background:rgba(240,180,41,.15);color:var(--warn)}
+  .bg.err{background:rgba(242,85,90,.15);color:var(--err)}
+  .bg.info{background:rgba(76,141,255,.15);color:#7ea9ff}
+  .bg.mute{background:#252a35;color:var(--tx3)}
+
+  /* 代码块 */
+  .code{
+    background:#0b0e13;border:1px solid var(--line2);border-radius:7px;
+    padding:11px 13px;font-family:var(--mono);font-size:12.5px;
+    color:#9fe6b8;overflow-x:auto;white-space:pre;
+  }
+  .code .c{color:var(--tx3)}
+  .code .k{color:#7ea9ff}
+
+  /* 日志 */
+  .logbox{
+    background:#0b0e13;border:1px solid var(--line2);border-radius:8px;
+    height:300px;overflow-y:auto;padding:11px 13px;
+    font-family:var(--mono);font-size:12px;line-height:1.75;
+  }
+  .logbox .tm{color:var(--tx3)}
+  .logbox .in{color:#8fd7ff}
+  .logbox .ok{color:var(--ok)}
+  .logbox .wr{color:var(--warn)}
+  .logbox .er{color:var(--err)}
+  .logbox::-webkit-scrollbar{width:9px}
+  .logbox::-webkit-scrollbar-thumb{background:#2b3140;border-radius:5px}
+  .logbox::-webkit-scrollbar-track{background:transparent}
+
+  /* 连接命令 */
+  .conn{
+    display:flex;align-items:center;gap:10px;
+    background:#0b0e13;border:1px solid #2d4a68;border-radius:8px;
+    padding:11px 13px;font-family:var(--mono);font-size:13px;
+  }
+  .conn .lbl{color:#7ea9ff;flex-shrink:0}
+  .conn .val{color:#9fe6b8;flex:1}
+  .conn button{
+    background:#253044;color:#7ea9ff;border:0;padding:3px 10px;
+    border-radius:5px;cursor:pointer;font-size:11.5px;font-family:inherit;
+  }
+  .conn button:hover{background:#2e3b54}
+
+  /* 开关 */
+  .sw{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 0;border-bottom:1px solid #20242e;cursor:pointer;
+  }
+  .sw:last-child{border-bottom:0}
+  .sw .tr{width:36px;height:20px;border-radius:11px;background:#333a48;
+    position:relative;flex-shrink:0;transition:background .18s}
+  .sw .tr::after{
+    content:"";position:absolute;width:15px;height:15px;border-radius:50%;
+    background:#fff;top:2.5px;left:2.5px;transition:transform .18s;
+  }
+  .sw.on .tr{background:var(--ac)}
+  .sw.on .tr::after{transform:translateX(16px)}
+  .sw .tx{flex:1}
+  .sw .tx b{font-size:13px;font-weight:500;display:block}
+  .sw .tx span{font-size:11.5px;color:var(--tx3);line-height:1.5;display:block;
+    margin-top:2px}
+
+  /* stream 流量条 */
+  .bar{height:5px;background:#252a35;border-radius:3px;overflow:hidden;
+    display:flex;margin-top:5px}
+  .bar i{display:block;height:100%}
+  .bar .u{background:var(--ac)}
+  .bar .d{background:var(--ok)}
+
+  /* 决策清单 */
+  .decide{
+    background:var(--bg3);border:1px solid var(--line);
+    border-radius:10px;padding:16px;
+  }
+  .decide h3{font-size:13px;margin-bottom:10px;color:var(--ac)}
+  .decide ul{list-style:none}
+  .decide li{
+    font-size:12.5px;color:var(--tx2);padding:7px 0 7px 22px;
+    border-bottom:1px solid #20242e;position:relative;line-height:1.65;
+  }
+  .decide li:last-child{border-bottom:0}
+  .decide li::before{
+    content:"?";position:absolute;left:0;top:7px;width:15px;height:15px;
+    border-radius:50%;background:#253044;color:#7ea9ff;font-size:10px;
+    display:flex;align-items:center;justify-content:center;font-weight:700;
+  }
+  .decide li b{color:var(--tx)}
+
+  .note{
+    font-size:12.5px;color:var(--tx2);background:#181c25;
+    border:1px solid var(--line);border-left:3px solid var(--ac);
+    border-radius:7px;padding:11px 14px;margin-top:12px;line-height:1.7;
+  }
+  .note b{color:var(--tx)}
+  .fp{
+    margin-top:22px;padding:14px 18px;background:#141821;
+    border:1px dashed var(--line2);border-radius:9px;
+    font-size:12.5px;color:var(--tx2);
+  }
+  .fp b{color:var(--ac)}
+  .fp ul{margin:8px 0 0 18px}
+  .fp li{margin-bottom:5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="proto-note">
+    <b>UI 原型说明</b>：这是静态页面描述，<b>未改动任何现有代码</b>。所有数值均为示例
+    （真实取自本机：设备 <span class="mono">b57290249a9b3206</span>、
+    端口 <span class="mono">15555</span>、本机 IP <span class="mono">172.16.0.106</span>）。
+    五个页面用左侧导航切换，交互状态（按钮、开关、标签页）为原型示意。
+  </div>
+
+  <div class="window">
+    <!-- 标题栏 -->
+    <div class="titlebar">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="t">ADB TCP 桥控制台</div>
+    </div>
+
+    <div class="body">
+      <!-- 侧边栏 -->
+      <div class="side">
+        <div class="brand">
+          <div class="logo">⇄</div>
+          <div><b>ADB TCP 桥</b><span>v1.0 · USB 设备共享</span></div>
+        </div>
+
+        <div class="nav">
+          <button class="on" data-p="p1"><span class="ic">◉</span>控制台</button>
+          <button data-p="p2"><span class="ic">⇄</span>会话与流量</button>
+          <button data-p="p3"><span class="ic">☰</span>运行日志<span class="pill">3</span></button>
+          <button data-p="p4"><span class="ic">⚙</span>参数设置</button>
+          <button data-p="p5"><span class="ic">✚</span>诊断工具</button>
+        </div>
+
+        <div class="side-foot">
+          <div class="r"><span>状态</span><b style="color:var(--ok)">● 运行中</b></div>
+          <div class="r"><span>端口</span><b class="mono">15555</b></div>
+          <div class="r"><span>运行时长</span><b class="mono" id="uptime">02:14:37</b></div>
+          <div class="r"><span>活动会话</span><b class="mono">2</b></div>
+          <div class="r"><span>adb server</span><b style="color:var(--ok)">正常</b></div>
+        </div>
+      </div>
+
+      <!-- 内容区 -->
+      <div class="main">
+
+        <!-- ============ P1 控制台 ============ -->
+        <div class="page on" id="p1">
+          <div class="hd">
+            <div>
+              <h2>控制台</h2>
+              <p>桥的启动、停止与核心状态</p>
+            </div>
+            <div class="hd-acts">
+              <button class="btn">停止</button>
+              <button class="btn pri">▶ 启动桥</button>
+            </div>
+          </div>
+
+          <div class="status-hero">
+            <div class="lamp"></div>
+            <div class="info">
+              <b>桥正在运行，设备已暴露到局域网</b>
+              <span>0.0.0.0:15555 → adb server → b57290249a9b3206</span>
+            </div>
+            <span class="bg ok">运行中</span>
+          </div>
+
+          <div class="grid g4" style="margin-bottom:14px">
+            <div class="stat">
+              <div class="lb">监听地址</div>
+              <div class="vl" style="font-size:16px">0.0.0.0:15555</div>
+              <div class="ex">局域网可访问</div>
+            </div>
+            <div class="stat">
+              <div class="lb">目标设备</div>
+              <div class="vl" style="font-size:16px">b57290249a9b3<span style="color:var(--tx3)">206</span></div>
+              <div class="ex">USB · product: luckfox</div>
+            </div>
+            <div class="stat">
+              <div class="lb">连接数</div>
+              <div class="vl">2</div>
+              <div class="ex">峰值 3 · 累计 11</div>
+            </div>
+            <div class="stat">
+              <div class="lb">今日流量</div>
+              <div class="vl">1.24<span style="font-size:13px;color:var(--tx2)"> GB</span></div>
+              <div class="ex">上行 218MB / 下行 1.02GB</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>电脑 B 连接方式 <span class="tag">复制给同事即可</span></h3>
+            <div class="conn">
+              <span class="lbl">$</span>
+              <span class="val">adb connect 172.16.0.106:15555</span>
+              <button>复制</button>
+            </div>
+            <div class="hint">
+              在电脑 B 上执行后，B 即可像普通网络设备一样使用
+              <span class="mono">adb shell</span> /
+              <span class="mono">adb push</span> /
+              <span class="mono">adb pull</span> /
+              <span class="mono">adb logcat</span>，设备 C 无需任何改动。
+            </div>
+            <div class="note">
+              <b>端口必须避开 5555~5585。</b>本机 adb server 会扫描这段端口查找模拟器，
+              若桥占用其中之一，<span class="mono">adb devices</span> 会出现幽灵设备
+              <span class="mono">emulator-5554</span> 并抢占真实设备名。
+              当前使用 <b>15555</b>，安全。
+            </div>
+          </div>
+
+          <div class="grid g2">
+            <div class="card">
+              <h3>设备信息</h3>
+              <table>
+                <tr><td style="color:var(--tx3);width:88px">serial</td><td class="mono">b57290249a9b3206</td></tr>
+                <tr><td style="color:var(--tx3)">product</td><td class="mono">luckfox</td></tr>
+                <tr><td style="color:var(--tx3)">features</td><td class="mono" style="font-size:11.5px">stat_v2,cmd,shell_v2</td></tr>
+                <tr><td style="color:var(--tx3)">连接方式</td><td><span class="bg ok">USB</span></td></tr>
+                <tr><td style="color:var(--tx3)">adb server</td><td>127.0.0.1:5037 <span class="bg ok">已连接</span></td></tr>
+              </table>
+            </div>
+
+            <div class="card">
+              <h3>快速自检</h3>
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:center;gap:9px;font-size:12.5px">
+                  <span class="bg ok">✓</span>端口 15555 监听正常
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;font-size:12.5px">
+                  <span class="bg ok">✓</span>设备 C 在线且响应
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;font-size:12.5px">
+                  <span class="bg ok">✓</span>CNXN 协商成功（shell_v2 已启用）
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;font-size:12.5px">
+                  <span class="bg ok">✓</span>最近一次命令往返 12ms
+                </div>
+              </div>
+              <button class="btn" style="margin-top:13px;width:100%">重新运行完整自检</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ P2 会话与流量 ============ -->
+        <div class="page" id="p2">
+          <div class="hd">
+            <div>
+              <h2>会话与流量</h2>
+              <p>当前接入的客户端与每条 stream 的实时吞吐</p>
+            </div>
+            <div class="hd-acts">
+              <button class="btn sm">刷新</button>
+              <button class="btn sm danger">断开全部</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>已接入客户端 <span class="tag">2 个会话</span></h3>
+            <table>
+              <thead><tr>
+                <th>客户端 IP</th><th>接入时间</th><th>时长</th>
+                <th>streams</th><th>上行</th><th>下行</th><th>状态</th><th></th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td class="mono">172.16.0.101</td>
+                  <td class="mono" style="color:var(--tx3)">20:38:12</td>
+                  <td class="mono">02:14:37</td>
+                  <td class="mono">3</td>
+                  <td class="mono">4.2 MB</td>
+                  <td class="mono">318 MB</td>
+                  <td><span class="bg ok">活跃</span></td>
+                  <td><button class="btn sm danger">断开</button></td>
+                </tr>
+                <tr>
+                  <td class="mono">172.16.0.105</td>
+                  <td class="mono" style="color:var(--tx3)">19:52:40</td>
+                  <td class="mono" style="color:var(--tx3)">00:00:00</td>
+                  <td class="mono">0</td>
+                  <td class="mono">0 B</td>
+                  <td class="mono">0 B</td>
+                  <td><span class="bg mute">空闲</span></td>
+                  <td><button class="btn sm danger">断开</button></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="hint">
+              空闲超过 600 秒的会话会被自动回收，防止「连上却不发数据」的半开连接永久占用线程。
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>活跃 stream <span class="tag">172.16.0.101</span></h3>
+            <table>
+              <thead><tr>
+                <th>#</th><th>服务</th><th>上行</th><th>下行</th>
+                <th>流量分布</th><th>状态</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td class="mono">1</td>
+                  <td class="mono" style="font-size:11.5px">shell:ls -la /etc</td>
+                  <td class="mono">1.2 KB</td>
+                  <td class="mono">28 KB</td>
+                  <td style="width:130px"><div class="bar"><i class="u" style="width:5%"></i><i class="d" style="width:95%"></i></div></td>
+                  <td><span class="bg ok">进行中</span></td>
+                </tr>
+                <tr>
+                  <td class="mono">2</td>
+                  <td class="mono" style="font-size:11.5px">shell:cat /proc/meminfo</td>
+                  <td class="mono">0 B</td>
+                  <td class="mono">2.1 KB</td>
+                  <td style="width:130px"><div class="bar"><i class="d" style="width:100%"></i></div></td>
+                  <td><span class="bg ok">进行中</span></td>
+                </tr>
+                <tr>
+                  <td class="mono">3</td>
+                  <td class="mono" style="font-size:11.5px">sync:</td>
+                  <td class="mono">182 MB</td>
+                  <td class="mono">4 KB</td>
+                  <td style="width:130px"><div class="bar"><i class="u" style="width:100%"></i></div></td>
+                  <td><span class="bg ok">进行中</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="hint">
+              每条 stream 在 A 侧对应一条独立的到 adb server 的连接
+              （<span class="mono">host:transport:&lt;serial&gt;</span>），
+              这样 B 上的 push/pull/shell 互不干扰。
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>历史会话</h3>
+            <table>
+              <thead><tr>
+                <th>客户端 IP</th><th>接入</th><th>断开</th>
+                <th>总流量</th><th>发起命令</th><th>断开原因</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td class="mono">172.16.0.101</td>
+                  <td class="mono" style="color:var(--tx3)">18:20:11</td>
+                  <td class="mono" style="color:var(--tx3)">18:41:52</td>
+                  <td class="mono">96 MB</td>
+                  <td class="mono">14</td>
+                  <td><span class="bg mute">客户端主动关闭</span></td>
+                </tr>
+                <tr>
+                  <td class="mono">172.16.0.102</td>
+                  <td class="mono" style="color:var(--tx3)">15:02:33</td>
+                  <td class="mono" style="color:var(--tx3)">15:02:51</td>
+                  <td class="mono">1.4 MB</td>
+                  <td class="mono">2</td>
+                  <td><span class="bg warn">空闲超时</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ============ P3 运行日志 ============ -->
+        <div class="page" id="p3">
+          <div class="hd">
+            <div>
+              <h2>运行日志</h2>
+              <p>桥的排障日志与 ADB 协议包明细</p>
+            </div>
+            <div class="hd-acts">
+              <button class="btn sm">暂停</button>
+              <button class="btn sm">清空</button>
+              <button class="btn sm">导出</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;gap:16px;font-size:12.5px;margin-bottom:12px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" checked> 会话事件
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox"> stream 明细
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox"> 端口检查
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="pk"> ADB 协议包
+              </label>
+              <span style="margin-left:auto" class="hint">
+                协议包明细对应命令行 <span class="mono">--debug-packets</span>，量大且排障时才开
+              </span>
+            </div>
+
+            <div class="logbox">
+              <div><span class="tm">20:38:12</span> <span class="in">172.16.0.101</span> 已接入 -> b57290249a9b3206</div>
+              <div><span class="tm">20:38:12</span> <span class="in">172.16.0.101</span> stream#1 -> shell:ls -la /etc</div>
+              <div><span class="tm">20:38:13</span> <span class="tm">stream#1</span> 关闭 [shell:ls -la /etc] 上行=1204B 下行=28672B</div>
+              <div><span class="tm">20:41:07</span> <span class="in">172.16.0.101</span> stream#2 -> shell:cat /proc/meminfo</div>
+              <div><span class="tm">20:41:09</span> <span class="in">172.16.0.101</span> stream#3 -> sync:</div>
+              <div><span class="tm">20:41:09</span> <span class="wr">stream#3</span> 建立 stream 失败: 设备忙，稍后重试</div>
+              <div><span class="tm">20:41:10</span> <span class="in">172.16.0.101</span> stream#3 -> sync: （重试成功）</div>
+              <div><span class="tm">20:44:58</span> <span class="ok">adb server 已恢复</span>（看门狗检测到断开并自动拉起）</div>
+              <div><span class="tm">20:52:33</span> <span class="er">stream#2</span> 上游 EOF：adb server 主动关闭了这条流 (已下行 2.1KB)</div>
+              <div><span class="tm">20:52:33</span> <span class="in">172.16.0.105</span> 已接入 -> b57290249a9b3206</div>
+              <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1e222c"></div>
+              <div><span class="tm">20:52:34</span> <span class="tm">stream#4</span> <span class="k">→ CNXN</span> version=0x01000000 maxdata=1048576</div>
+              <div><span class="tm">20:52:34</span> <span class="tm">stream#4</span> <span class="k">← OPEN</span> a0=3 service=shell:id</div>
+              <div><span class="tm">20:52:34</span> <span class="tm">stream#4</span> <span class="k">→ OKAY</span> a0=65637 a1=3</div>
+              <div><span class="tm">20:52:35</span> <span class="tm">stream#4</span> <span class="k">← WRTE</span> len=4 (uid=0)</div>
+              <div><span class="tm">20:52:35</span> <span class="tm">stream#4</span> <span class="k">← CLSE</span></div>
+              <div><span class="tm">20:52:35</span> <span class="tm">stream#4</span> 关闭 [shell:id] 上行=0B 下行=8B</div>
+            </div>
+
+            <div class="hint" style="margin-top:10px">
+              日志里的错误会直接标明是否可自愈。例如
+              <span class="mono">看门狗</span> 能自动拉起被回收的 adb server；
+              而设备侧的真实错误（如 <span class="mono">stream 被拒</span>）需要人工介入。
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ P4 参数设置 ============ -->
+        <div class="page" id="p4">
+          <div class="hd">
+            <div>
+              <h2>参数设置</h2>
+              <p>对应现有命令行参数，改动需重启桥生效</p>
+            </div>
+            <div class="hd-acts">
+              <button class="btn">恢复默认</button>
+              <button class="btn pri">保存并重启</button>
+            </div>
+          </div>
+
+          <div class="grid g2">
+            <div class="card">
+              <h3>监听配置</h3>
+              <div style="margin-bottom:13px">
+                <label class="fl">监听端口</label>
+                <input type="number" value="15555">
+                <div class="hint warn">
+                  ⚠ 不可设为 5555~5585。该段被 adb server 视为模拟器端口，
+                  会产生幽灵设备 emulator-5554。
+                </div>
+              </div>
+              <div style="margin-bottom:13px">
+                <label class="fl">监听地址</label>
+                <select>
+                  <option>0.0.0.0（局域网可访问）</option>
+                  <option>127.0.0.1（仅本机）</option>
+                </select>
+                <div class="hint">选 127.0.0.1 会跳过端口占用检查（独占，不可能被外部占用）。</div>
+              </div>
+              <div>
+                <label class="fl">adb server 端口</label>
+                <input type="number" value="5037">
+                <div class="hint">一般无需修改。</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>目标设备</h3>
+              <div style="margin-bottom:13px">
+                <label class="fl">设备 serial</label>
+                <select>
+                  <option>b57290249a9b3206（USB · luckfox）</option>
+                  <option>自动选择第一台在线设备</option>
+                </select>
+                <div class="hint">多设备同时连接时必须显式指定，否则只暴露第一台。</div>
+              </div>
+              <div style="margin-bottom:13px">
+                <label class="fl">本机局域网 IP</label>
+                <input type="text" value="172.16.0.106" disabled>
+                <div class="hint">自动探测，仅用于显示给电脑 B 的连接命令。</div>
+              </div>
+              <div>
+                <label class="fl">端口占用处理</label>
+                <div class="sw on" onclick="this.classList.toggle('on')">
+                  <div class="tr"></div>
+                  <div class="tx">
+                    <b>启动时自动清理占用进程</b>
+                    <span>对应 <span class="mono">--no-kill-port</span> 的反面。关闭后端口被占用时只报告不终止。对应参数 <span class="mono">--no-kill-port</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>高级选项</h3>
+            <div class="sw on" onclick="this.classList.toggle('on')">
+              <div class="tr"></div>
+              <div class="tx">
+                <b>启动时检查并释放监听端口</b>
+                <span>桥重启时上一次的实例常还占着端口，尤其 Windows 上 taskkill 失败或处于 TIME_WAIT 时直接 bind 会失败。此项开启时会找出全部占用 PID 并逐个结束（系统关键进程受保护，不会被误杀）。</span>
+              </div>
+            </div>
+            <div class="sw" onclick="this.classList.toggle('on')">
+              <div class="tr"></div>
+              <div class="tx">
+                <b>adb server 看门狗</b>
+                <span>每 10 秒确认 adb server 存活，断了自动拉起。部分环境会回收 adb server，开启后桥无需重启即可自愈。</span>
+              </div>
+            </div>
+            <div class="sw" onclick="this.classList.toggle('on')">
+              <div class="tr"></div>
+              <div class="tx">
+                <b>空闲心跳保活<span style="color:var(--warn)">（已证实有害，默认关闭）</span></b>
+                <span>对应 <span class="mono">--heartbeat</span>。历史上曾误判超时来源而加入，结果破坏 ADB 流控与消息边界，反而让原本正常的命令被断。仅供实验，不建议开启。</span>
+              </div>
+            </div>
+            <div class="sw" onclick="this.classList.toggle('on')">
+              <div class="tr"></div>
+              <div class="tx">
+                <b>记录 ADB 协议包明细</b>
+                <span>对应 <span class="mono">--debug-packets</span>。打印每个包的类型与长度，排障时开启，日志量很大。</span>
+              </div>
+            </div>
+            <div class="sw" onclick="this.classList.toggle('on')">
+              <div class="tr"></div>
+              <div class="tx">
+                <b>开机自动启动桥</b>
+                <span>（计划项，当前命令行版无此能力）需确认后再实现。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ P5 诊断工具 ============ -->
+        <div class="page" id="p5">
+          <div class="hd">
+            <div>
+              <h2>诊断工具</h2>
+              <p>一键排查常见问题，也可以命令行执行测试</p>
+            </div>
+          </div>
+
+          <div class="grid g2">
+            <div class="card">
+              <h3>快速诊断</h3>
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div class="sw" onclick="this.classList.toggle('on')" style="cursor:pointer">
+                  <div class="tr"></div>
+                  <div class="tx"><b>端口占用检查</b><span>列出占用 15555 的全部进程及名称</span></div>
+                </div>
+                <div class="sw" onclick="this.classList.toggle('on')" style="cursor:pointer">
+                  <div class="tr"></div>
+                  <div class="tx"><b>设备连通性</b><span>经桥执行一次 adb shell 并回显结果</span></div>
+                </div>
+                <div class="sw" onclick="this.classList.toggle('on')" style="cursor:pointer">
+                  <div class="tr"></div>
+                  <div class="tx"><b>协议协商检查</b><span>确认 features 含 shell_v2（否则退化为老 shell，stderr 与 stdout 会合并、退出码丢失）</span></div>
+                </div>
+                <div class="sw" onclick="this.classList.toggle('on')" style="cursor:pointer">
+                  <div class="tr"></div>
+                  <div class="tx"><b>长命令超时检查</b><span>执行一条静默 15 秒的命令，验证不会被误断</span></div>
+                </div>
+              </div>
+              <button class="btn pri" style="margin-top:14px;width:100%">全部运行</button>
+            </div>
+
+            <div class="card">
+              <h3>测试套件</h3>
+              <table>
+                <thead><tr><th>测试</th><th>规模</th><th>用途</th><th></th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td>一致性第一批</td><td class="mono">50 条</td>
+                    <td style="color:var(--tx3)">文本管道/查找/哈希等基础</td>
+                    <td><button class="btn sm">运行</button></td>
+                  </tr>
+                  <tr>
+                    <td>一致性第二批</td><td class="mono">50 条</td>
+                    <td style="color:var(--tx3)">二进制/正则/Bash 高级/流控</td>
+                    <td><button class="btn sm">运行</button></td>
+                  </tr>
+                  <tr>
+                    <td>基础压测</td><td class="mono">12 项</td>
+                    <td style="color:var(--tx3)">连接/并发/断连恢复</td>
+                    <td><button class="btn sm">运行</button></td>
+                  </tr>
+                  <tr>
+                    <td>进阶压测</td><td class="mono">11 项</td>
+                    <td style="color:var(--tx3)">大文件/半开连接/强杀</td>
+                    <td><button class="btn sm">运行</button></td>
+                  </tr>
+                  <tr>
+                    <td>弱网测试</td><td class="mono">5 档</td>
+                    <td style="color:var(--tx3)">注入延迟/抖动/限速/断连</td>
+                    <td><button class="btn sm">运行</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="hint">
+                一致性测试的「跨机模式」需先在 A 上导出 USB 基线，再在 B 上对比。
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>最近诊断结果</h3>
+            <div class="logbox" style="height:auto;max-height:220px">
+              <div><span class="tm">20:50:12</span> <span class="ok">✓</span> 端口 15555 空闲，无残留进程</div>
+              <div><span class="tm">20:50:12</span> <span class="ok">✓</span> adb server 可达（127.0.0.1:5037）</div>
+              <div><span class="tm">20:50:12</span> <span class="ok">✓</span> 设备 b57290249a9b3206 在线，product=luckfox</div>
+              <div><span class="tm">20:50:13</span> <span class="ok">✓</span> features 协商: stat_v2,cmd,shell_v2</div>
+              <div><span class="tm">20:50:13</span> <span class="ok">✓</span> 经桥执行 echo，返回一致</div>
+              <div><span class="tm">20:50:28</span> <span class="ok">✓</span> 静默 15 秒命令未被误断（关键回归项）</div>
+              <div style="color:var(--tx3);margin-top:6px">
+                — 以上为 20:50 的一次完整自检，全部通过 —
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 需要你确认的决策点 -->
+  <div class="decide">
+    <h3>需要你拍板的 6 个决策点</h3>
+    <ul>
+      <li><b>技术形态：</b>Python 桌面程序（如 tkinter / PySide6）还是本地 Web UI（浏览器打开 localhost 页面）？后者跨平台最省事，且能复用 HTML/CSS 能力做实时刷新。</li>
+      <li><b>桥与界面是否同进程：</b>同进程最简单但界面卡顿会影响转发；独立子进程则 UI 可以随时重启桥，互不影响。</li>
+      <li><b>是否保留命令行版：</b>UI 覆盖全部功能后，bat 启动方式是否还保留？建议保留作为应急手段。</li>
+      <li><b>需要哪些页面：</b>当前原型是 5 个（控制台/会话与流量/日志/设置/诊断）。会话流量和诊断这两个是否都要，还是先做精简版？</li>
+      <li><b>测试套件是否接进 UI：</b>压测与一致性测试跑一次要几分钟，UI 里点按钮触发并实时看进度，还是只保留命令行、在文档里说明？</li>
+      <li><b>配置持久化：</b>参数是否要保存到配置文件（如 config.json），下次启动自动加载？还是每次都用默认值？</li>
+    </ul>
+  </div>
+
+  <div class="fp">
+    <b>原型未覆盖、但实现时需要考虑的：</b>
+    <ul>
+      <li>实时刷新怎么实现：UI 若为本地 Web，需要一个状态接口（如 <span class="mono">GET /api/status</span>）输出 JSON，前端轮询；桥本身需暴露运行时统计（当前代码里没有，需要加）。</li>
+      <li>控制桥的启停需要一个控制通道（如本地 IPC 或 HTTP 控制端口），当前 <span class="mono">adb_tcp_bridge.py</span> 只接受命令行参数，未提供运行时控制接口，需要改造。</li>
+      <li>日志获取：当前日志直接 print 到 stdout，UI 需要改为同时写入内存队列供界面读取。</li>
+      <li>安全提示：设备 C 的 ADB shell 为 root，开放 15555 等同于暴露完整 root shell。UI 里是否要加一个显眼的风险提示与访问来源记录功能。</li>
+      <li>Nuitka 二进制版与 UI 的关系：若走 Web UI 则不再需要编译成 exe（浏览器即界面），这会影响现有的发布方式。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+  // 导航切换
+  document.querySelectorAll('.nav button').forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll('.nav button').forEach(function(x){
+        x.classList.remove('on')
+      });
+      document.querySelectorAll('.page').forEach(function(x){
+        x.classList.remove('on')
+      });
+      b.classList.add('on');
+      document.getElementById(b.dataset.p).classList.add('on');
+    };
+  });
+  // 日志自动滚到底
+  var lb = document.querySelector('.logbox');
+  if (lb) lb.scrollTop = lb.scrollHeight;
+  // 简单计时器示意
+  var s = 2*3600 + 14*60 + 37;
+  setInterval(function(){
+    s++;
+    var h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+    var el = document.getElementById('uptime');
+    if (el) el.textContent =
+      (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(x<10?'0':'')+x;
+  }, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+[package]
+name = "adb_bridge_rs"
+version = "0.1.0"
+edition = "2021"
+description = "ADB TCP 桥 —— Rust 重构版（将 USB 设备暴露为标准 TCP adb 设备）"
+
+[[bin]]
+name = "adb_bridge_rs"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "unwind"
+strip = true
+
+[dependencies]
