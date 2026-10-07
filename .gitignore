@@ -17,3 +17,8 @@ _out_*.txt
 _tmp/
 _sshpub/
 official_adb/
+# Nuitka 编译产物
+adb_tcp_bridge.dist/
+adb_tcp_bridge.build/
+adb_tcp_bridge.exe
+nuitka-crash-report.xml
