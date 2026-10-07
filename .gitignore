@@ -1,0 +1,19 @@
+# Python 缓存与编译产物
+__pycache__/
+*.py[cod]
+*.pyc
+
+# 桥的调试日志（--debug-packets 会输出）
+_bridge_debug.log
+*.log
+
+# 测试生成的二进制与大文件
+*.bin
+_t_*.txt
+_out_*.txt
+*.zip
+
+# 临时目录
+_tmp/
+_sshpub/
+official_adb/
