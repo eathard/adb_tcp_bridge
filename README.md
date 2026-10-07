@@ -68,7 +68,8 @@ adb_tcp_bridge.dist\adb_tcp_bridge.exe --listen-port 15555
 
 | 文件 | 说明 |
 |---|---|
-| `consistency_test.py` | 50 条命令 USB 与桥的逐条比对（stdout/stderr/退出码） |
+| `consistency_test.py` | 第一批 50 条命令 USB 与桥的逐条比对（stdout/stderr/退出码） |
+| `consistency_test2.py` | 第二批 50 条命令：二进制边界/正则/Bash 高级语法/find-xargs/退出码/大流量流控 |
 | `stress_test.py` | 基础压测 12 项 |
 | `stress_advanced.py` | 进阶压测 11 项（大文件/并发/半开连接/强杀等） |
 | `remote_test.py` | 上传测试脚本到 B 执行并回传输出 |

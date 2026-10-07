@@ -22,3 +22,6 @@ adb_tcp_bridge.dist/
 adb_tcp_bridge.build/
 adb_tcp_bridge.exe
 nuitka-crash-report.xml
+
+# 一致性测试的设备输出基线（随固件/文件系统变化，需按需重新生成）
+baseline_usb.json
