@@ -1,0 +1,15 @@
+﻿TARGET_ID=76396 NAME=adb_bridge_rs TITLE=[ADB TCP 桥控制台] RESPONDING=True
+--- windows ---
+76396	adb_bridge_rs	ADB TCP 桥控制台
+25188	ApplicationFrameHost	设置
+24700	AweSun	370 237 150
+28436	cc-switch	com.ccswitch.desktop-siw
+30228	chrome	WorkBuddy - AI Agent 办公新范式 - Google Chrome
+30140	FoxitPDFEditor	Rockchip RM182XMC0 Thermal_Design_Guide_V1.2_CN_20260415.pdf - Foxit PDF Editor
+59048	Notepad	*新建 文本文档 (2).txt - Notepad
+18200	PowerToys.QuickAccess	PowerToys Quick Access (Preview)
+61336	SystemSettings	设置
+23420	TextInputHost	Windows 输入体验
+68296	Weixin	微信
+32876	WindowsTerminal	命令提示符
+23068	WorkBuddy	WorkBuddy

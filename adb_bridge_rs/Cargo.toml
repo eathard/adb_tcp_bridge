@@ -3,10 +3,59 @@ name = "adb_bridge_rs"
 version = "0.1.0"
 edition = "2021"
 description = "ADB TCP 桥 —— Rust 重构版（将 USB 设备暴露为标准 TCP adb 设备）"
+license = "GPL-3.0-only"
 
 [[bin]]
 name = "adb_bridge_rs"
 path = "src/main.rs"
+
+# 图形界面入口（windows 子系统，双击不弹控制台黑窗）
+[[bin]]
+name = "adb_bridge_rs_gui"
+path = "src/bin/gui.rs"
+required-features = ["gui"]
+
+# Slint 界面入口
+[[bin]]
+name = "adb_bridge_slint"
+path = "src/bin/slint.rs"
+required-features = ["slint-ui"]
+
+[dependencies]
+# ---- 界面（可选，二选一）----
+#
+# eframe/egui：即时模式，轻量，但视觉上限偏「工具级」。
+# ⚠️ 迁移 Slint 期间**暂时注释**：只要它出现在依赖表里，cargo 就要解析
+# 它的整棵依赖树（winit/wasm-bindgen/tokio…），白白多下载几百个包。
+# 需要回退 egui 时取消注释即可（src/gui.rs 原样保留）。
+# eframe = { version = "0.31", optional = true }
+
+# Slint：声明式保留模式，视觉表现力更强。
+#
+# ⚠️ 这里用 **path 依赖**指向本机已有的 Slint 源码检出（D 盘，含 2.6GB 已编译产物），
+# 目的是复用本机已有的依赖缓存，避免重复下载上千个 crate。
+# **发布到其他机器、或 D 盘目录移动后，把这两行改成版本号即可**：
+#     slint = "1.16"
+#     slint-build = "1.16"
+# 关掉默认特性里的 accessibility：它会引入 accesskit 及一整批
+# Linux 无障碍依赖（accesskit_atspi_* 等），Windows 上根本用不到，
+# 却必须下载才能完成依赖解析。桌面工具无需无障碍，关掉可显著减小依赖树。
+slint = {
+    path = "D:/slint-ui/slint/api/rs/slint",
+    optional = true,
+    default-features = false,
+    features = ["std", "backend-default", "renderer-femtovg", "compat-1-2"],
+}
+
+[build-dependencies]
+slint-build = { path = "D:/slint-ui/slint/api/rs/build", optional = true }
+
+[features]
+default = []
+# 旧界面（egui）—— 依赖暂时注释，故该特性当前不可用
+gui = []
+# 新界面（Slint）
+slint-ui = ["dep:slint", "dep:slint-build"]
 
 [profile.release]
 opt-level = 3
@@ -14,5 +63,3 @@ lto = true
 codegen-units = 1
 panic = "unwind"
 strip = true
-
-[dependencies]

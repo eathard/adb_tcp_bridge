@@ -121,13 +121,55 @@ python gen_python_vectors.py   # 重新生成基准向量
 跨机比较需先归一化换行：A 上是 Rockchip ADB 31（CRLF），B 上是 ADB 34（LF），
 这是客户端版本差异，与桥无关。
 
+## 图形界面
+
+提供两套界面实现，二选一构建：
+
+| 界面 | 框架 | 构建 | 产物 |
+|---|---|---|---|
+| **Slint**（推荐） | 声明式保留模式 | `cargo build --release --features slint-ui` | `adb_bridge_slint.exe` |
+| egui（旧） | 即时模式 | `cargo build --release --features gui` | `adb_bridge_rs_gui.exe` |
+
+Slint 版界面描述在 `ui/main.slint`，业务逻辑在 `src/slint_ui.rs`，
+两者通过属性与回调解耦，**桥核心一行都不涉及界面**。
+
+### 为什么有两套
+
+egui 是即时模式，轻量、集成简单，但视觉上限偏「工具级」，复现已确认的
+HTML 原型有困难；Slint 是声明式保留模式，有专门的渲染引擎与主题系统，
+视觉表现力更强，且只在数据变化时重绘，性能上同样是加分项。
+因此界面迁移到 Slint，egui 版保留以便回退对比（`src/gui.rs` 未删除）。
+
+### 本机构建 Slint 的两个前提
+
+1. **必须用 crates.io 镜像**：本机直连下载 `.crate` 稳定超时；
+   cargo 走本机代理又会拿到 502。镜像配置见 `.cargo/config.toml`。
+2. **必须关闭 HTTP/2 多路复用**：同一代理下 `CARGO_HTTP_MULTIPLEXING=false`
+   才不会 502（已写进配置文件与 `build-slint.bat`）。
+
+Slint 依赖通过 **path 指向本机源码检出** `D:/slint-ui/slint`（含已编译产物），
+避免重复下载上千个 crate。**换机器或发布时，把 Cargo.toml 里两行改成版本号**：
+`slint = "1.16"` / `slint-build = "1.16"`。
+
+## 许可证
+
+本项目采用 **GPL-3.0-only**（见 `LICENSE`）。
+
+选择 GPLv3 与 Slint 的授权有关：Slint 提供 GPLv3 / 免版税 / 商业三种许可，
+- 走 **GPLv3**：免费，但要求应用整体开源；
+- 走 **免版税**：桌面应用免费且可闭源，代价是保留一行 `Made with Slint` 归属声明。
+
+本项目选择前者，因此**整体以 GPLv3 开源**。
+
 ## 已知限制
 
-- 端口占用自动清理（`port_guard.py`）尚未移植，暂为 Rust 版未实现的功能。
-- GUI 界面尚未实现（阶段 3）。
 - 设备热插拔不支持：serial 在启动时确定。
+- 日志时间显示的是 UTC（Rust 标准库无时区转换，未引入 chrono）。
+- 「复制连接命令」目前只写入日志，尚未真正写入系统剪贴板。
+- 托盘常驻、开机自启未实现；关闭窗口即退出。
 
 ## 现状与后续
 
-已完成：协议层、日志、server、stream、session、命令行入口、真实设备回归。
-未完成：端口清理、GUI、配置持久化、托盘常驻、开机自启。
+已完成：协议层、日志、server、stream、session、命令行入口、端口自动清理、
+配置持久化、两套图形界面、真实设备回归。
+未完成：剪贴板、托盘常驻、开机自启、日志本地时区。

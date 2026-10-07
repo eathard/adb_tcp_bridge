@@ -18,6 +18,7 @@ use std::time::{Duration, Instant};
 use crate::log;
 use crate::proto::{self, cmd};
 use crate::server;
+use crate::stats;
 use crate::stream::{self, Flow, StreamStats};
 
 /// 会话共享状态。
@@ -148,6 +149,11 @@ pub fn run(shared: Arc<Shared>, mut client: TcpStream) {
         return;
     }
 
+    // 注册到界面可读的运行时统计。放在握手成功之后 ——
+    // 这样早期 return（CNXN 不合法等）不会在界面上留下幽灵会话。
+    // 注意：这是**旁路上报**，不参与任何转发逻辑，失败也不影响收发。
+    let sess = stats::session_begin(&peer);
+
     let mut total_up: u64 = 0;
     let mut total_down: u64 = 0;
     let started = Instant::now();
@@ -174,6 +180,7 @@ pub fn run(shared: Arc<Shared>, mut client: TcpStream) {
                     &client,
                     &send_lock,
                     &mut active,
+                    &sess,
                     header.arg0,
                     &service,
                     &peer,
@@ -187,6 +194,7 @@ pub fn run(shared: Arc<Shared>, mut client: TcpStream) {
                     let _ = stream::enqueue(&st.queue, payload);
                     st.up.fetch_add(n as u64, Ordering::Relaxed);
                     total_up += n as u64;
+                    sess.add_up(n as u64);
                 }
             }
             cmd::OKAY => {
@@ -236,6 +244,9 @@ pub fn run(shared: Arc<Shared>, mut client: TcpStream) {
         st.closed.store(true, Ordering::Relaxed);
         stream::enqueue_close(&st.queue);
     }
+    // 标记会话结束，界面据此把它从「进行中」移到「已断开」
+    sess.end();
+
     let secs = started.elapsed().as_secs();
     log::info(
         "session",
@@ -255,6 +266,7 @@ fn handle_open(
     client: &TcpStream,
     send_lock: &Arc<Mutex<()>>,
     active: &mut std::collections::HashMap<u32, ActiveStream>,
+    sess: &stats::SessionHandle,
     local_id: u32,
     service: &str,
     peer: &str,
@@ -318,6 +330,8 @@ fn handle_open(
             let ub2 = up_bytes.clone();
             let our = our_id;
             let q = queue.clone();
+            // 会话级下行计数（界面用），与 stream 级 db 各记各的
+            let sh = sess.shared();
             std::thread::spawn(move || {
                 let mut upr = up;
                 let mut buf = vec![0u8; stream::RECV_BUF];
@@ -355,6 +369,7 @@ fn handle_open(
                                 break;
                             }
                             db.fetch_add(n as u64, Ordering::Relaxed);
+                            sh.add_down(n as u64);
                             let _ = &ub2;
                         }
                         Err(e) => {
@@ -393,6 +408,7 @@ fn handle_open(
     );
 
     // 最后才应答 OKAY，表示 stream 建立成功
+    sess.stream_open();
     send_packet(client, send_lock, cmd::OKAY, our_id, local_id, b"");
     log::info(
         "session",

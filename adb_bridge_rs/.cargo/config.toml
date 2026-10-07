@@ -1,0 +1,28 @@
+# ⚠️ 网络现状（本机，2026-10 实测），改配置前请先读完：
+#
+# 1. **直连 crates.io 不可用**：index 偶尔能连上，但下载 .crate 稳定超时
+#    （"Operation timed out ... 0 bytes received"）。curl 能连是因为它走了
+#    本机代理，而 cargo 走同一代理时会拿到 502（CONNECT tunnel failed）。
+# 2. **因此必须用镜像** —— rsproxy 在本机实测可用。
+# 3. 代价：切换源会让 cargo 换一个缓存目录（源 URL 的 hash 不同），
+#    之前在 index.crates.io 源下积累的缓存此轮用不上，需要重新下载。
+#    这是无奈但唯一可行的选择。
+#
+# 另注：cargo 默认开启 HTTP/2 多路复用，本机代理下会触发 502，
+# 因此构建时需要 `CARGO_HTTP_MULTIPLEXING=false`（见 build-slint.bat）。
+
+# 镜像暂时停用：本机 index.crates.io 源下有 878 个已解压缓存，
+# 比镜像源的 609 个更多。既然要离线构建，就用默认源以复用最大缓存。
+# 需要重新下载时再取消下面的注释。
+# [source.crates-io]
+# replace-with = 'rsproxy-sparse'
+#
+# [source.rsproxy-sparse]
+# registry = "sparse+https://rsproxy.cn/index/"
+
+[net]
+retry = 8
+git-fetch-with-cli = true
+
+[http]
+multiplexing = false
