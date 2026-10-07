@@ -43,15 +43,32 @@ pub fn run(cfg: Config) {
     let ui = MainWindow::new().expect("创建 Slint 窗口失败");
 
     let mut state = AppState::default();
-    state.listen_port = cfg.listen_port;
-    state.listen_addr = cfg.listen_addr.clone();
+
+    // 恢复上次保存的配置（与 egui 版同一套优先级）：
+    //   **命令行显式给的值 > 配置文件 > 内置默认**
+    // 判据是「用户在命令行里写没写这个开关」，而不是「值是否等于默认值」，
+    // 否则用户显式写 --listen-port 15555（恰好等于默认）会被配置文件覆盖掉。
+    let loaded = config::load();
+    let raw_args: Vec<String> = std::env::args().collect();
+    let addr_given = raw_args.iter().any(|a| a == "--listen-addr");
+    let port_given = raw_args.iter().any(|a| a == "--listen-port");
+    let serial_given = raw_args.iter().any(|a| a == "--serial");
+
+    state.listen_addr = if addr_given {
+        cfg.listen_addr.clone()
+    } else {
+        loaded.listen_addr
+    };
+    state.listen_port = if port_given { cfg.listen_port } else { loaded.listen_port };
     state.local_ip = crate::local_ip();
     state.no_kill_port = cfg.no_kill_port;
     state.debug_packets = cfg.debug_packets;
     state.server_port = cfg.server_port;
-    if let Some(s) = &cfg.serial {
-        state.serial = s.clone();
-    }
+    state.serial = if serial_given {
+        cfg.serial.clone().unwrap_or_default()
+    } else {
+        loaded.serial.unwrap_or_default()
+    };
 
     let ctx = Arc::new(Mutex::new(Ctx {
         state,

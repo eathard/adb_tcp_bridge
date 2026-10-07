@@ -33,7 +33,11 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             listen_addr: "0.0.0.0".into(),
-            listen_port: 5555,
+            // ⚠️ 默认值必须是 15555 而不是 adb 惯用的 5555：5555~5585 是
+            // adb server 的模拟器扫描区间，监听它会让本机 `adb devices`
+            // 冒出幽灵设备 emulator-5554 并抢走真实设备名。
+            // 详见 is_emulator_port()。
+            listen_port: recommended_port(),
             serial: None,
             server_port: 5037,
             no_kill_port: false,
@@ -92,7 +96,7 @@ fn print_help() {
     println!("ADB TCP 桥 —— Rust 重构版");
     println!();
     println!("用法: adb_bridge_rs [选项]");
-    println!("  --listen-port <端口>   监听端口（默认 5555，建议 15555）");
+    println!("  --listen-port <端口>   监听端口（默认 15555）");
     println!("  --listen-addr <地址>   监听地址（默认 0.0.0.0）");
     println!("  --serial <serial>      目标设备（默认第一台在线设备）");
     println!("  --server-port <端口>   adb server 端口（默认 5037）");
@@ -161,7 +165,7 @@ mod arg_tests {
     #[test]
     fn invalid_port_falls_back_to_default() {
         let c = parse_args_from(["--listen-port".to_string(), "abc".to_string()].into_iter());
-        assert_eq!(c.listen_port, 5555, "非法值应保持默认");
+        assert_eq!(c.listen_port, 15555, "非法值应保持默认");
     }
 
     #[test]

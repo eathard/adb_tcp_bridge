@@ -131,8 +131,13 @@ export component MainWindow inherits Window {
     // ⚠️ 必须显式指定中文字体族，否则汉字全是方块
     default-font-family: "Microsoft YaHei";
     background: Pal.bg;
-    preferred-width: 1200px;
-    preferred-height: 780px;
+    // ⚠️ 默认尺寸要按「150% 缩放 + 2560x1600 屏」的实际观感定：逻辑像素
+    //    会乘 1.5 变成物理像素，再加窗口边框。取 1320x800 -> 约 1980x1256
+    //    物理像素，配合系统给的默认位置 (304,304)，底边落在 1560 以内，
+    //    底部状态栏不会被屏幕边缘切掉。之前用 1440x900 时底边到了 1710，
+    //    超出屏幕高度 1600，状态栏直接看不见。
+    preferred-width: 1320px;
+    preferred-height: 800px;
     min-width: 940px;
     min-height: 620px;
 
@@ -406,17 +411,18 @@ export component MainWindow inherits Window {
 
                     HorizontalLayout {
                         spacing: 10px;
-                        alignment: space-between;
+                        // 左标题、右控件。中间塞一个空 Rectangle 撑开：
+                        // 不能把 CheckBox/Button 塞进嵌套 HorizontalLayout ——
+                        // 嵌套布局默认吃掉全部宽度，会把复选框挤到「清空」按钮
+                        // 底下（两者重叠），实测就是这个现象。
                         SectionTitle { text: "运行日志"; }
-                        HorizontalLayout {
-                            spacing: 8px;
-                            CheckBox {
-                                text: "自动刷新";
-                                checked: root.auto-refresh;
-                                toggled => { root.auto-refresh = !root.auto-refresh; }
-                            }
-                            Button { text: "清空"; clicked => { root.clear-logs(); } }
+                        Rectangle { }
+                        CheckBox {
+                            text: "自动刷新";
+                            checked: root.auto-refresh;
+                            toggled => { root.auto-refresh = !root.auto-refresh; }
                         }
+                        Button { text: "清空"; clicked => { root.clear-logs(); } }
                     }
 
                     Rectangle {
@@ -491,6 +497,8 @@ export component MainWindow inherits Window {
 
                         HorizontalLayout {
                             spacing: 10px;
+                            // alignment: start 让按钮按内容宽度排布而不是拉满整行
+                            alignment: start;
                             Button { text: "保存"; clicked => { root.save-settings(); } }
                             Button { text: "刷新设备列表"; clicked => { root.refresh-devices(); } }
                         }
@@ -507,6 +515,7 @@ export component MainWindow inherits Window {
 
                     HorizontalLayout {
                         spacing: 10px;
+                        alignment: start;
                         Button { text: "运行自检"; clicked => { root.run-diagnostics(); } }
                     }
 

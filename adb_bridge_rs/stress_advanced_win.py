@@ -11,8 +11,22 @@ stress_advanced.py 的 Windows 修正版（不改上级目录的原有脚本）�
 本脚本把生成随机数据的方式改为跨平台：Windows 用 `os.urandom`，
 其他平台才用 /dev/urandom。
 
+另外修了两个同样与桥无关的脚本自身缺陷（都曾表现为「用例失败」，
+很容易被误判成桥的问题）：
+
+  1. MD5 用 `certutil -hashfile` 取。中文 Windows 上 certutil 输出是
+     本地 GBK，`text=True` 按默认编码解码会抛 UnicodeDecodeError，
+     连带 ok 判定里 `"MD5" in local_md5` 判断也失效。改为直接用
+     Python 的 hashlib 算，顺带省掉一次子进程。
+  2. 设备端临时目录沿用 Android 惯例 `/data/local/tmp`，但设备 C 是
+     **Buildroot**，`/data/local/tmp` 根本不存在（实测
+     `ls: /data/local/tmp: No such file or directory`），
+     push 直接失败。改用与 stress_test.py 一致的 /tmp。
+     ⚠️ 设备的 /tmp 是 tmpfs，只有 233MB，别放超过 ~100MB 的文件。
+
 用法: python stress_advanced_win.py
 """
+import hashlib
 import os
 import subprocess
 import sys
@@ -22,6 +36,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 USB = "b57290249a9b3206"
 BRIDGE = "172.16.0.106:15555"
+
+
+def md5_of(path):
+    """算文件 MD5（十六进制小写）。用 hashlib 避免 certutil 的编码坑。"""
+    h = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def make_random_file(path, size):
@@ -50,7 +73,9 @@ def sh(target, cmd, timeout=120):
 def main():
     results = []
     tmp = os.path.join(os.environ.get("TEMP", "."), "rs_stress.bin")
-    dev_tmp = "/data/local/tmp/rs_stress.bin"
+    # ⚠️ 设备 C 是 Buildroot，没有 /data/local/tmp（那是 Android 的路径），
+    #    用 /tmp —— 与 stress_test.py 保持一致。
+    dev_tmp = "/tmp/rs_stress.bin"
 
     def record(name, ok, detail):
         results.append((name, ok, detail))
@@ -60,26 +85,20 @@ def main():
     # ---- A1 30MB push+pull ----
     try:
         make_random_file(tmp, 30 * 1024 * 1024)
-        local_md5 = subprocess.run(
-            ["certutil", "-hashfile", tmp, "MD5"],
-            capture_output=True, text=True).stdout
-        want = local_md5.split()[1].strip().lower() if "MD5" in local_md5 else None
+        want = md5_of(tmp)
         subprocess.run(["adb", "-s", BRIDGE, "shell", "rm -f " + dev_tmp],
                        capture_output=True)
         t0 = time.time()
         push = adb("-s", BRIDGE, "push", tmp, dev_tmp, timeout=300)
         pull = adb("-s", BRIDGE, "pull", dev_tmp, tmp + ".back", timeout=300)
         dt = time.time() - t0
-        got = None
-        if os.path.exists(tmp + ".back"):
-            r = subprocess.run(["certutil", "-hashfile", tmp + ".back", "MD5"],
-                               capture_output=True, text=True).stdout
-            if "MD5" in r:
-                got = r.split()[1].strip().lower()
+        got = md5_of(tmp + ".back") if os.path.exists(tmp + ".back") else None
         ok = push.returncode == 0 and pull.returncode == 0 and \
-            got is not None and want is not None and got == want
+            got is not None and got == want
         record("A1 30MB push+pull (md5)", ok,
-               "%.1fs 传输 %.1f MB/s" % (dt, 30 / dt if dt else 0))
+               "%.1fs 传输 %.1f MB/s  md5 %s"
+               % (dt, 30 / dt if dt else 0,
+                  "一致" if got == want else ("不一致 %s vs %s" % (got, want))))
         for p in (tmp, tmp + ".back"):
             if os.path.exists(p):
                 os.remove(p)
@@ -93,9 +112,15 @@ def main():
                        capture_output=True)
         t0 = time.time()
         push = adb("-s", BRIDGE, "push", tmp, dev_tmp, timeout=400)
+        rc, out, err = sh(BRIDGE, "md5sum " + dev_tmp)
         dt = time.time() - t0
-        record("A11 50MB 分片传输", push.returncode == 0,
-               "%.1fs 吞吐 %.1f MB/s" % (dt, 50 / dt if dt else 0))
+        want = md5_of(tmp)
+        dev_md5 = out.split()[0].lower() if out.split() else ""
+        ok = (push.returncode == 0 and dev_md5 == want)
+        record("A11 50MB 分片传输", ok,
+               "%.1fs 吞吐 %.1f MB/s  设备端 md5 %s"
+               % (dt, 50 / dt if dt else 0,
+                  "一致" if dev_md5 == want else ("不一致 %s" % dev_md5[:12])))
         os.remove(tmp)
     except Exception as e:
         record("A11 50MB 分片传输", False, repr(e))

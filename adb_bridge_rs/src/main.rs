@@ -12,7 +12,7 @@
 //!
 //! ```text
 //! adb_bridge_rs [选项]
-//!   --listen-port <端口>    监听端口（默认 5555，建议 15555）
+//!   --listen-port <端口>    监听端口（默认 15555）
 //!   --listen-addr <地址>    监听地址（默认 0.0.0.0）
 //!   --serial <serial>       目标设备（默认第一台在线设备）
 //!   --server-port <端口>    adb server 端口（默认 5037）
