@@ -15,6 +15,7 @@ adb TCP bridge —— 在电脑 A 上运行，把本机 USB 设备 C 暴露成�
           —— 每个 stream 对应一条到 server 的连接，桥负责多路复用与流控。
 """
 import argparse
+import os
 import socket
 import struct
 import subprocess
@@ -23,6 +24,20 @@ import queue
 import threading
 import time
 from collections import deque
+
+# 端口占用检查与清理（与本文件同目录的 port_guard.py）
+try:
+    import port_guard
+except ImportError:  # 打包成单文件或从别处运行时，做一次兜底加载
+    import importlib.util
+    _pg = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "port_guard.py")
+    if os.path.isfile(_pg):
+        _spec = importlib.util.spec_from_file_location("port_guard", _pg)
+        port_guard = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(port_guard)
+    else:
+        port_guard = None
 
 A_CNXN = 0x4E584E43
 A_OPEN = 0x4E45504F
@@ -468,6 +483,49 @@ class Session(object):
             self.close()
 
 
+def prepare_listen_port(addr, port, auto_kill=True):
+    """启动前确保监听端口可用。
+
+    桥重启时上一次的实例常还占着端口（尤其 Windows 上 taskkill 失败、
+    或进程处于 TIME_WAIT 的情况），直接 bind 会抛 OSError。
+    这里先探测占用情况，自动结束占用进程，再确认端口可用。
+
+    仅监听回环地址时无需处理（本进程独占，不可能被别人占用）。
+    返回 True 表示可以继续启动。
+    """
+    # 只监听 127.0.0.1/8 时不会与外部冲突，跳过检查
+    if addr not in ("0.0.0.0", "::", ""):
+        return True
+
+    if port_guard is None:
+        log("提示: 未找到 port_guard.py，跳过端口占用检查")
+        return True
+
+    log("检查监听端口 %d ..." % port)
+    try:
+        ok, killed = port_guard.ensure_port_free(
+            port, host=addr, skip_pids={os.getpid()}, auto_kill=auto_kill)
+    except Exception as exc:
+        log("端口检查异常（忽略）: %s" % exc)
+        return True
+
+    if ok:
+        if killed:
+            log("端口 %d 清理完成，已结束 %d 个残留进程"
+                % (port, len(killed)))
+        else:
+            log("端口 %d 可用" % port)
+        return True
+
+    if auto_kill:
+        log("端口 %d 无法释放，请手动关闭占用程序后重试"
+            "（或加 --no-kill-port 跳过自动清理）" % port)
+    else:
+        log("端口 %d 被占用，可用 --no-kill-port 关闭本选项"
+            "（已默认开启自动清理）" % port)
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser(description="Expose a USB adb device over TCP")
     ap.add_argument("--listen-port", type=int, default=5555)
@@ -476,12 +534,19 @@ def main():
     ap.add_argument("--server-port", type=int, default=5037)
     ap.add_argument("--heartbeat", action="store_true",
                     help="启用空闲心跳（默认关闭；实测会破坏流控，仅供实验）")
+    ap.add_argument("--no-kill-port", action="store_true",
+                    help="监听端口被占用时不结束占用进程（默认会自动清理）")
     ap.add_argument("--debug-packets", action="store_true",
                     help="打印每个 adb 包的收发（排障用）")
     args = ap.parse_args()
 
     global DEBUG_PACKETS
     DEBUG_PACKETS = args.debug_packets
+
+    # ---- 先确保监听端口可用（清理上次残留的实例）----
+    if not prepare_listen_port(args.listen_addr, args.listen_port,
+                              auto_kill=not args.no_kill_port):
+        sys.exit(1)
 
     adb(["start-server"])
     serial = args.serial or (list_devices() or [None])[0]
