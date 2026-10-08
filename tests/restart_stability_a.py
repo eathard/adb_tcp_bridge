@@ -25,8 +25,9 @@ import time
 import paramiko
 
 HOST_A = "172.16.0.106"
-HOST_B = "172.16.0.101"
-B_USER = "mypc"
+HOST_B = os.environ.get("SSH_HOST", "172.16.0.101")
+B_USER = os.environ.get("SSH_USER", "mypc")
+# 口令走环境变量（与 tests/remote_test.py 同一套约定）——本脚本会推到公开仓库
 B_PASS = os.environ.get("SSH_PASSWORD", "")
 PORT = 15555
 SERIAL = "b57290249a9b3206"
@@ -87,6 +88,8 @@ class RemoteB:
     def __init__(self):
         self.cli = paramiko.SSHClient()
         self.cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        if not B_PASS:
+            raise SystemExit("需要密码：设置 SSH_PASSWORD 环境变量")
         self.cli.connect(HOST_B, port=22, username=B_USER, password=B_PASS,
                          timeout=15)
 

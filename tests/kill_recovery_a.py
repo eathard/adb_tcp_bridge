@@ -21,8 +21,12 @@ import time
 
 import paramiko
 
+# 跨机参数走环境变量（与 tests/remote_test.py 同一套约定），
+# 口令绝不写进仓库 —— 本脚本会推到公开仓库。
 HOST_A = "172.16.0.106"
-HOST_B = "172.16.0.101"
+HOST_B = os.environ.get("SSH_HOST", "172.16.0.101")
+SSH_PORT = int(os.environ.get("SSH_PORT", "22"))
+SSH_USER = os.environ.get("SSH_USER", "mypc")
 PORT = 15555
 BRIDGE = "%s:%d" % (HOST_A, PORT)
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -70,8 +74,11 @@ class RemoteB:
     def __init__(self):
         self.cli = paramiko.SSHClient()
         self.cli.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.cli.connect(HOST_B, port=22, username="mypc", password=SSH_PASSWORD,
-                         timeout=15)
+        pwd = os.environ.get("SSH_PASSWORD", "")
+        if not pwd:
+            raise SystemExit("需要密码：设置 SSH_PASSWORD 环境变量")
+        self.cli.connect(HOST_B, port=SSH_PORT, username=SSH_USER,
+                         password=pwd, timeout=15)
 
     def run(self, cmd, timeout=60):
         _, o, e = self.cli.exec_command(cmd, timeout=timeout)
