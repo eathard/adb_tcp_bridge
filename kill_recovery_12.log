@@ -1,0 +1,21 @@
+目标: C:\Users\zz\WorkBuddy\2026-10-06-23-01-41\adb_bridge_rs\target\release\adb_bridge_rs.exe
+强杀轮数: 12
+
+每轮：启动 -> B 接入并挂一个长命令 -> taskkill /F 强杀 -> 重启 -> 验证端口可接管且功能恢复
+
+[ 1] OK   启动 2.71s  强杀 1.03s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+[ 2] OK   启动 0.50s  强杀 1.03s  释放 0.00s  重启 1.01s  恢复 0.0s  | dev=luckfox
+[ 3] OK   启动 0.51s  强杀 1.02s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+[ 4] OK   启动 1.00s  强杀 1.02s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+[ 5] OK   启动 0.51s  强杀 1.05s  释放 0.00s  重启 0.51s  恢复 0.0s  | dev=luckfox
+[ 6] OK   启动 0.50s  强杀 1.00s  释放 0.00s  重启 0.51s  恢复 0.0s  | dev=luckfox
+[ 7] OK   启动 0.50s  强杀 1.02s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+[ 8] OK   启动 0.51s  强杀 1.06s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+[ 9] OK   启动 1.00s  强杀 1.04s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+[10] OK   启动 1.01s  强杀 1.01s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+[11] OK   启动 0.50s  强杀 1.08s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+[12] OK   启动 0.50s  强杀 1.00s  释放 0.00s  重启 0.50s  恢复 0.0s  | dev=luckfox
+
+============ 强杀恢复汇总 ============
+轮数 12   通过 12  (100.0%)
+=====================================

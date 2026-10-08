@@ -7,6 +7,12 @@ __pycache__/
 _bridge_debug.log
 *.log
 
+# 但测试结果日志要留档（稳定性测试的证据）
+!restart_30.log
+!restart_gui_15.log
+!kill_recovery_12.log
+!ping_stability_b.log
+
 # 测试生成的二进制与大文件
 *.bin
 _t_*.txt
