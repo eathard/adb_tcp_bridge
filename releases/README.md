@@ -29,13 +29,13 @@ python build_nuitka.py
 ## 上传到 GitHub Release
 
 ```bash
-git tag -a v1.0.0 -m "v1.0.0：首个归档版本"
-git push origin v1.0.0
+git tag -a v1.0 -m "v1.0：首个归档版本"
+git push origin v1.0
 
-gh release create v1.0.0 \
+gh release create v1.0 \
   releases/adb_bridge_slint.exe \
   releases/adb_bridge_rs.exe \
-  --title "v1.0.0" \
+  --title "v1.0" \
   --notes "见 CHANGELOG.md"
 ```
 
@@ -43,7 +43,7 @@ Python 版是**目录**形式的产物，上传前先打包：
 
 ```bash
 cd releases/python && zip -qr ../adb_tcp_bridge-windows-x64.zip adb_tcp_bridge.dist && cd ..
-gh release upload v1.0.0 adb_tcp_bridge-windows-x64.zip
+gh release upload v1.0 adb_tcp_bridge-windows-x64.zip
 ```
 
 ## 运行要求
