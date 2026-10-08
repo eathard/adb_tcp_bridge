@@ -126,6 +126,70 @@ component SectionTitle inherits Text {
     color: Pal.text;
 }
 
+// 「关于软件」页拓扑里的一个节点框。
+// highlight=true 用于强调中间那一台（跑桥的电脑 A）。
+component TopoNode inherits Rectangle {
+    in property <string> node-title: "";
+    in property <string> node-sub: "";
+    in property <bool> highlight: false;
+
+    width: 520px;
+    height: 58px;
+    border-radius: 8px;
+    border-width: 1px;
+    background: highlight ? Pal.card-hi : Pal.card;
+    border-color: highlight ? Pal.accent : Pal.border;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 1px;
+        alignment: center;
+        Text {
+            text: root.node-title;
+            color: Pal.text;
+            font-size: 14px;
+            font-weight: 600;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: root.node-sub;
+            color: Pal.text-dim;
+            font-size: 12px;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+// 拓扑里两个节点之间的连线：说明文字 + 竖线 + 向下箭头。
+// ⚠️ 箭头不能用「rotation 转 45° 的小方块」——Slint 里 rotation-angle
+//    只定义在 ImageItem 上，Rectangle 没有这个属性（实测编译直接报
+//    Unknown property rotation）。所以用几段递增的横条堆出实心三角，
+//    纯图形、不依赖字体是否有 ▽/↓ 这类符号字形。
+//    顺序是「文字 → 线 → 三角」，三角紧贴下一个节点，方向一目了然。
+component TopoLink inherits Rectangle {
+    in property <string> link-label: "";
+
+    width: 520px;
+    height: 44px;
+    background: transparent;
+    border-width: 0;
+
+    VerticalLayout {
+        spacing: 0;
+        alignment: center;
+        Text {
+            text: root.link-label;
+            color: Pal.text-dim;
+            font-size: 11px;
+        }
+        Rectangle { width: 2px; height: 12px; background: Pal.border; }
+        Rectangle { width: 3px; height: 2px; background: Pal.border; }
+        Rectangle { width: 7px; height: 2px; background: Pal.border; }
+        Rectangle { width: 11px; height: 2px; background: Pal.border; }
+        Rectangle { width: 15px; height: 2px; background: Pal.border; }
+    }
+}
+
 export component MainWindow inherits Window {
     title: "ADB TCP 桥控制台";
     // ⚠️ 必须显式指定中文字体族，否则汉字全是方块
@@ -222,6 +286,7 @@ export component MainWindow inherits Window {
                 NavItem { label: "运行日志";    selected: root.page == 2; clicked => { root.pick-page(2); } }
                 NavItem { label: "参数设置";    selected: root.page == 3; clicked => { root.pick-page(3); } }
                 NavItem { label: "诊断工具";    selected: root.page == 4; clicked => { root.pick-page(4); } }
+                NavItem { label: "关于软件";    selected: root.page == 5; clicked => { root.pick-page(5); } }
 
                 Rectangle { }   // 撑开，把下面推到底部
 
@@ -560,6 +625,93 @@ export component MainWindow inherits Window {
                                     Text { text: d.detail; color: Pal.text-dim; font-size: 11px; wrap: word-wrap; }
                                 }
                             }
+                        }
+                    }
+                }
+
+                // ===== 页 5：关于软件 =====
+                // 内容刻意保持一屏内：不做长段落说明，只留
+                // 「是什么 → 数据怎么走 → 怎么用」三件事。
+                if root.page == 5: ScrollView {
+                    VerticalLayout {
+                        padding: 20px;
+                        spacing: 14px;
+                        alignment: start;
+
+                        SectionTitle { text: "关于软件"; }
+
+                        Text {
+                            text: "让只接 USB 的设备，变成局域网里能用标准 adb 命令访问的网络设备。";
+                            color: Pal.text-dim;
+                            font-size: 13px;
+                        }
+
+                        // ---- 拓扑：电脑 B →（TCP）电脑 A →（USB）设备 C ----
+                        HorizontalLayout { alignment: center;
+                            TopoNode { node-title: "电脑 B"; node-sub: "用 adb 命令操作"; }
+                        }
+                        HorizontalLayout { alignment: center;
+                            TopoLink { link-label: "TCP 局域网"; }
+                        }
+                        HorizontalLayout { alignment: center;
+                            TopoNode { node-title: "电脑 A（本程序）"; node-sub: "设备通过 USB 接在这里"; highlight: true; }
+                        }
+                        HorizontalLayout { alignment: center;
+                            TopoLink { link-label: "USB"; }
+                        }
+                        HorizontalLayout { alignment: center;
+                            TopoNode { node-title: "设备 C"; node-sub: "无需改动、无需 root"; }
+                        }
+
+                        Rectangle {
+                            height: 1px;
+                            background: Pal.border;
+                        }
+
+                        // ---- 使用方法 ----
+                        HorizontalLayout {
+                            spacing: 10px;
+                            alignment: start;
+                            Text { text: "1"; color: Pal.accent; font-size: 12px; font-weight: 700; width: 16px; }
+                            Text { text: "在电脑 A 上启动本程序，点「启动桥」"; color: Pal.text-dim; font-size: 13px; }
+                        }
+                        HorizontalLayout {
+                            spacing: 10px;
+                            alignment: start;
+                            Text { text: "2"; color: Pal.accent; font-size: 12px; font-weight: 700; width: 16px; }
+                            Text {
+                                text: "在电脑 B 上执行  adb connect 电脑A的IP:15555";
+                                color: Pal.text-dim; font-size: 13px;
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 10px;
+                            alignment: start;
+                            Text { text: "3"; color: Pal.accent; font-size: 12px; font-weight: 700; width: 16px; }
+                            Text {
+                                text: "之后像普通设备一样用：adb -s 电脑A的IP:15555 shell";
+                                color: Pal.text-dim; font-size: 13px;
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: 10px;
+                            alignment: start;
+                            Text { text: "!"; color: Pal.warn; font-size: 12px; font-weight: 700; width: 16px; }
+                            Text {
+                                text: "端口用 15555，不要用 5555（会与模拟器冲突）";
+                                color: Pal.text-dim; font-size: 13px;
+                            }
+                        }
+
+                        Rectangle {
+                            height: 1px;
+                            background: Pal.border;
+                        }
+
+                        Text {
+                            text: "adb_bridge_rs v0.1.0 · GPL-3.0-only";
+                            color: Pal.text-dim;
+                            font-size: 11px;
                         }
                     }
                 }

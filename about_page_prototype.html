@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>关于软件 · 页面原型（待批准）</title>
+<style>
+  :root{
+    --bg:#14171d; --panel:#1a1e26; --card:#21262f;
+    --border:#2e3542; --text:#e6e9ef; --dim:#98a2b6; --accent:#4c8dff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#0e1116;color:var(--text);
+    font:14px/1.75 "Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    padding:28px;display:flex;justify-content:center;
+  }
+  .win{
+    width:1100px;max-width:100%;background:var(--bg);
+    border:1px solid var(--border);border-radius:10px;overflow:hidden;
+    box-shadow:0 18px 60px rgba(0,0,0,.5)
+  }
+  .body{display:flex;min-height:660px}
+  .side{
+    width:210px;flex:none;background:var(--panel);border-right:1px solid var(--border);
+    padding:16px 12px;display:flex;flex-direction:column;gap:3px
+  }
+  .side .brand{font-size:16px;font-weight:600;padding:0 10px 12px}
+  .nav{padding:8px 12px;border-radius:6px;color:var(--dim);font-size:13px}
+  .nav.on{background:var(--accent);color:#fff;font-weight:600}
+  .main{flex:1;padding:26px 30px}
+  h1{font-size:19px;font-weight:600}
+  .lead{color:var(--dim);font-size:13px;margin:6px 0 22px}
+
+  /* 拓扑：三段纵向，节点与连线都是极简的 */
+  .topo{display:flex;flex-direction:column;align-items:center}
+  .node{
+    width:520px;background:var(--card);border:1px solid var(--border);
+    border-radius:8px;padding:11px 16px;text-align:center
+  }
+  .node .t{font-size:13.5px;font-weight:600}
+  .node .m{color:var(--dim);font-size:12px;margin-top:3px}
+  .node.hl{border-color:var(--accent)}
+  .arrow{height:26px;width:2px;background:var(--border);position:relative}
+  .arrow::after{
+    content:"";position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+    border:5px solid transparent;border-top-color:var(--border)
+  }
+  .arrow span{
+    position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    font-size:11.5px;color:var(--dim);white-space:nowrap
+  }
+
+  hr{border:none;border-top:1px solid var(--border);margin:24px 0}
+
+  .step{display:flex;gap:10px;margin-bottom:9px;align-items:baseline}
+  .step .n{color:var(--accent);font-weight:700;font-size:12px;flex:none;width:16px}
+  .step .tx{font-size:13px;color:var(--dim)}
+  .step .tx b{color:var(--text);font-weight:600}
+  code{
+    background:#0d1015;border:1px solid var(--border);border-radius:4px;
+    padding:1px 6px;color:var(--accent);font:12px Consolas,monospace
+  }
+  .foot{margin-top:22px;color:var(--dim);font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="win">
+  <div class="body">
+    <div class="side">
+      <div class="brand">ADB TCP 桥</div>
+      <div class="nav">控制台</div>
+      <div class="nav">会话与流量</div>
+      <div class="nav">运行日志</div>
+      <div class="nav">参数设置</div>
+      <div class="nav">诊断工具</div>
+      <div class="nav on">关于软件</div>
+    </div>
+
+    <div class="main">
+      <h1>关于软件</h1>
+      <div class="lead">
+        让只接 USB 的设备，变成局域网里能用标准 adb 命令访问的网络设备。
+      </div>
+
+      <div class="topo">
+        <div class="node">
+          <div class="t">电脑 B</div>
+          <div class="m">用 adb 命令操作</div>
+        </div>
+        <div class="arrow"><span>TCP 局域网</span></div>
+        <div class="node hl">
+          <div class="t">电脑 A（本程序）</div>
+          <div class="m">设备通过 USB 接在这里</div>
+        </div>
+        <div class="arrow"><span>USB</span></div>
+        <div class="node">
+          <div class="t">设备 C</div>
+          <div class="m">无需改动、无需 root</div>
+        </div>
+      </div>
+
+      <hr>
+
+      <div class="step">
+        <span class="n">1</span>
+        <span class="tx">在电脑 A 上启动本程序，点<b>「启动桥」</b></span>
+      </div>
+      <div class="step">
+        <span class="n">2</span>
+        <span class="tx">在电脑 B 上执行 <code>adb connect 电脑A的IP:15555</code></span>
+      </div>
+      <div class="step">
+        <span class="n">3</span>
+        <span class="tx">之后像普通设备一样用：<code>adb -s 电脑A的IP:15555 shell</code></span>
+      </div>
+      <div class="step">
+        <span class="n">!</span>
+        <span class="tx">端口用 15555，不要用 5555（会与模拟器冲突）</span>
+      </div>
+
+      <div class="foot">adb_bridge_rs v0.1.0 · GPL-3.0-only · 页面原型（待批准后落地）</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
