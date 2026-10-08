@@ -1,7 +1,5 @@
 pub mod app_state;
 pub mod config;
-#[cfg(feature = "gui")]
-pub mod gui;
 pub mod log;
 pub mod port_guard;
 pub mod proto;
@@ -16,7 +14,7 @@ pub mod stream;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
-// ---- 以下函数原在 main.rs，为便于 GUI 调用而迁入 lib ----
+// ---- 以下函数原在 main.rs，为便于图形界面与测试调用而迁入 lib ----
 
 /// 桥的运行配置。
 #[derive(Debug, Clone)]
@@ -103,7 +101,6 @@ fn print_help() {
     println!("  --no-kill-port         端口被占用时不结束占用进程（默认自动清理）");
     println!("  --debug-packets        打印每个包的收发（排障用）");
     println!("  --save-config          把当前参数保存到配置文件");
-    println!("  --gui                  启动图形界面");
     println!();
     println!("警告: 端口不要用 5555~5585，否则会被 adb server 当成模拟器。");
 }
@@ -177,7 +174,7 @@ mod arg_tests {
     }
 }
 
-// ---- 以下函数原在 main.rs，为便于 GUI 调用而迁入 lib ----
+// ---- 以下函数原在 main.rs，为便于图形界面与测试调用而迁入 lib ----
 
 /// 列出在线的 adb 设备 serial。
 pub fn list_devices() -> Vec<String> {

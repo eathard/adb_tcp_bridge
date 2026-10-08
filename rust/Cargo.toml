@@ -39,25 +39,13 @@ path = "src/main.rs"
 
 # 图形界面入口（windows 子系统，双击不弹控制台黑窗）
 [[bin]]
-name = "adb_bridge_rs_gui"
-path = "src/bin/gui.rs"
-required-features = ["gui"]
-
-# Slint 界面入口
-[[bin]]
 name = "adb_bridge_slint"
 path = "src/bin/slint.rs"
 required-features = ["slint-ui"]
 
 [dependencies]
-# ---- 界面（可选，二选一）----
+# ---- 图形界面（可选）----
 #
-# eframe/egui：即时模式，轻量，但视觉上限偏「工具级」。
-# ⚠️ 迁移 Slint 期间**暂时注释**：只要它出现在依赖表里，cargo 就要解析
-# 它的整棵依赖树（winit/wasm-bindgen/tokio…），白白多下载几百个包。
-# 需要回退 egui 时取消注释即可（src/gui.rs 原样保留）。
-# eframe = { version = "0.31", optional = true }
-
 # Slint：声明式保留模式，视觉表现力更强。
 #
 # ⚠️ 这里用 **path 依赖**指向本机已有的 Slint 源码检出（D 盘，含 2.6GB 已编译产物），
@@ -80,9 +68,7 @@ slint-build = { path = "D:/slint-ui/slint/api/rs/build", optional = true }
 
 [features]
 default = []
-# 旧界面（egui）—— 依赖暂时注释，故该特性当前不可用
-gui = []
-# 新界面（Slint）
+# 图形界面（Slint）。不启用时只构建命令行版，不解析任何界面依赖。
 slint-ui = ["dep:slint", "dep:slint-build"]
 
 [profile.release]

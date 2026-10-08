@@ -10,7 +10,6 @@
 | 文件 | 来源 | 说明 |
 |---|---|---|
 | `adb_bridge_slint.exe` | `rust/` · `--features slint-ui` | **推荐**。Slint 图形界面版，6 个页面（控制台 / 会话 / 运行日志 / 参数设置 / 诊断工具 / 关于软件） |
-| `adb_bridge_rs_gui.exe` | `rust/` · `--features gui` | egui 图形界面版（旧实现，保留用于回退对比） |
 | `adb_bridge_rs.exe` | `rust/` · 默认 | 命令行版，无界面 |
 | `python/adb_tcp_bridge.dist/` | `python/` · Nuitka | Python 版的免环境打包产物（含 python313.dll） |
 
@@ -35,7 +34,6 @@ git push origin v1.0.0
 
 gh release create v1.0.0 \
   releases/adb_bridge_slint.exe \
-  releases/adb_bridge_rs_gui.exe \
   releases/adb_bridge_rs.exe \
   --title "v1.0.0" \
   --notes "见 CHANGELOG.md"

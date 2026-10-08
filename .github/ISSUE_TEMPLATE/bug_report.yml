@@ -14,7 +14,6 @@ body:
       label: 用的是哪个版本
       options:
         - Rust 版 · Slint 图形界面（adb_bridge_slint.exe）
-        - Rust 版 · egui 图形界面（adb_bridge_rs_gui.exe）
         - Rust 版 · 命令行（adb_bridge_rs.exe）
         - Python 版源码（python/adb_tcp_bridge.py）
         - Python 版 Nuitka 打包 exe

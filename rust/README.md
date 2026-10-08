@@ -151,23 +151,22 @@ python tools/gen_python_vectors.py   # 重新生成基准向量
 
 ## 图形界面
 
-提供两套界面实现，二选一构建：
+界面是**独立入口**，与命令行版分开构建：
 
-| 界面 | 框架 | 构建 | 产物 |
-|---|---|---|---|
-| **Slint**（推荐） | 声明式保留模式 | `cargo build --release --features slint-ui --offline` | `adb_bridge_slint.exe` |
-| egui（旧） | 即时模式 | `cargo build --release --features gui --offline` | `adb_bridge_rs_gui.exe` |
+```bash
+cargo build --release --features slint-ui --offline   # → adb_bridge_slint.exe
+cargo build --release --offline                       # → adb_bridge_rs.exe（纯命令行）
+```
 
-Slint 版界面描述在 `ui/main.slint`（6 个页面：控制台 / 会话 / 运行日志 /
+界面描述在 `ui/main.slint`（6 个页面：控制台 / 会话 / 运行日志 /
 参数设置 / 诊断工具 / 关于软件），业务逻辑在 `src/slint_ui.rs`，
 两者通过属性与回调解耦，**桥核心一行都不涉及界面**。
 
-### 为什么有两套
+选声明式（保留模式）而不是即时模式方案：它有专门的渲染引擎与主题系统，
+视觉表现力更强，且只在数据变化时重绘，编译期就能查出属性/类型错误
+（`.slint` 语法错误 4 秒内就报，不用等完整编译）。
 
-egui 是即时模式，轻量、集成简单，但视觉上限偏「工具级」，复现已确认的
-HTML 原型有困难；Slint 是声明式保留模式，有专门的渲染引擎与主题系统，
-视觉表现力更强，且只在数据变化时重绘，性能上同样是加分项。
-因此界面迁移到 Slint，egui 版保留以便回退对比（`src/gui.rs` 未删除）。
+命令行版不解析任何界面依赖，几秒即可编好；Slint 版首次编译约 16 分钟。
 
 ### 界面实现的四条硬约束
 
@@ -287,7 +286,7 @@ Slint 是整窗自绘，**Win32 枚举不到子控件句柄**，只能按屏幕�
 ## 现状与后续
 
 **已完成**：协议层、日志、server、stream、session、命令行入口、端口自动清理、
-配置持久化、两套图形界面、真实设备回归、自动滚动日志页。
+配置持久化、图形界面、真实设备回归、自动滚动日志页。
 
 **未完成**（不影响使用）：剪贴板、「复制连接命令」目前只写日志、托盘常驻、
 开机自启、日志本地时区。

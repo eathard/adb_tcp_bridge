@@ -5,10 +5,12 @@
 //!
 //! # 启动方式
 //!
-//! - **双击 exe（无参数）**：直接打开图形界面（需 `--features gui` 构建）
-//! - **带参数**：走命令行模式，便于脚本与测试套件调用
-//! - `--cli` / `--no-gui`：强制命令行模式
-//! - `--gui`：强制图形界面
+//! 本入口**只提供命令行模式**，便于脚本与测试套件调用（参数照原样解析，
+//! 结果只走 stdout/退出码）。
+//!
+//! 图形界面是一个**独立入口** `adb_bridge_slint.exe`
+//! （`cargo build --release --features slint-ui`），双击即开，
+//! 与本入口的启动方式互不影响。
 //!
 //! ```text
 //! adb_bridge_rs [选项]
@@ -19,8 +21,6 @@
 //!   --no-kill-port          端口被占用时不结束占用进程
 //!   --debug-packets         打印每个包的收发（排障用）
 //!   --save-config           把当前参数保存到配置文件
-//!   --cli / --no-gui        强制命令行模式
-//!   --gui                   强制图形界面
 //! ```
 //!
 //! ⚠️ **端口必须避开 5555~5585**：本机 adb server 会扫描该段查找模拟器，
@@ -55,27 +55,6 @@ fn init_console_utf8() {
 #[cfg(not(windows))]
 fn init_console_utf8() {}
 
-/// 判断是否启动图形界面。
-///
-/// 规则（按优先级）：
-/// 1. `--cli` / `--no-gui` → 一律命令行
-/// 2. `--gui` → 一律图形界面
-/// 3. `--help` / `-h` → 命令行（打印帮助后退出）
-/// 4. **无任何参数**（典型场景：双击 exe）→ 编译了 GUI 特性就开界面
-/// 5. 带了其它参数 → 命令行（保持脚本与测试套件的既有行为）
-fn should_use_gui(raw: &[String]) -> bool {
-    if raw.iter().any(|a| a == "--cli" || a == "--no-gui") {
-        return false;
-    }
-    if raw.iter().any(|a| a == "--gui") {
-        return true;
-    }
-    if raw.iter().any(|a| a == "--help" || a == "-h") {
-        return false;
-    }
-    raw.is_empty() && cfg!(feature = "gui")
-}
-
 fn main() {
     init_console_utf8();
 
@@ -97,23 +76,6 @@ fn main() {
             }
         }
         return;
-    }
-
-    // 图形界面
-    if should_use_gui(&raw) {
-        #[cfg(feature = "gui")]
-        {
-            adb_bridge_rs::gui::run(cfg);
-            return;
-        }
-        #[cfg(not(feature = "gui"))]
-        {
-            log::error(
-                "bridge",
-                "本版本未包含 GUI。请重新构建：cargo build --release --features gui",
-            );
-            std::process::exit(1);
-        }
     }
 
     log::info("bridge", "ADB TCP 桥启动（Rust 版）");

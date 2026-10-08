@@ -144,14 +144,14 @@ def _field(out, key):
 
 
 def kill_stray_bridges():
-    """结束所有在跑的桥进程（CLI 与 GUI 两种产物），返回杀掉的个数。
+    """结束所有在跑的桥进程（CLI / Slint 界面 / Python 三种产物），返回杀掉的个数。
 
     反复启停测试最容易被上一轮的残留进程污染：端口被占 -> 新桥启动失败 ->
     误报成「软件不稳定」。所以每轮前主动清场。
     """
     killed = 0
     for image in ("adb_bridge_rs.exe", "adb_bridge_slint.exe",
-                  "adb_bridge_rs_gui.exe", "adb_tcp_bridge.exe"):
+                  "adb_tcp_bridge.exe"):
         # 用 PID 精确结束，不用通配进程名 —— 那会连带杀掉 adb server，
         # 连带导致设备掉线（这个坑踩过）。
         out = subprocess.run(
