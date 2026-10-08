@@ -16,20 +16,11 @@ adb server，在两侧做 ADB 协议转换与多路复用。局域网里的另�
 只要 `adb connect A:15555`，就能像访问普通网络设备一样使用
 `shell` / `push` / `pull` / `logcat` / `install` 等全部功能。
 
-```
-电脑 B                 电脑 A                      设备 C
-(Ubuntu)          (Windows / Linux)           (Luckfox RK 板)
-   │                   │                            │
-   │  局域网 TCP       │      USB（ADB 协议）       │
-   └──────────────────>│<───────────────────────────┘
-  172.16.0.101      172.16.0.106          无 IP（按 USB 序列号识别）
-                        │
-                   adb_tcp_bridge
-                  监听 0.0.0.0:15555
-                        │
-                  adb server :5037
-```
+![电脑 B 经局域网 TCP 连接电脑 A，电脑 A 经 USB 连接设备 C](docs/images/topology.svg)
 
+> 上图与软件「**关于软件**」页面里的拓扑图是同一版式，由
+> [`docs/images/gen_topology.py`](docs/images/gen_topology.py) 生成。
+>
 > A↔C 这一段是 **USB 上的 ADB 批量传输**，不是网络。
 > 设备有没有网卡、网卡 IP 是多少，都与桥无关 —— 这正是本软件存在的意义。
 > （这块板另外有个 RNDIS 网卡 `usb0`，但那是设备自己的上行，桥一条包都不走它。）
@@ -42,7 +33,7 @@ adb server，在两侧做 ADB 协议转换与多路复用。局域网里的另�
 |---|---|---|
 | 位置 | [`python/`](python/) | [`rust/`](rust/) |
 | 形态 | 单文件脚本 / Nuitka 打包 exe | `cargo build` 产出单文件 exe |
-| 界面 | 无（命令行） | **有**（Slint，6 个页面；另有 egui 版可回退） |
+| 界面 | 无（命令行） | **有**（Slint，6 个页面） |
 | 状态 | 参考实现与对照基线 | **推荐**，功能等价、协议字节级兼容 |
 
 两版可并行运行做 A/B 对照。Rust 版有 7 项单元测试是与 Python 版的**逐字节交叉校验**，
@@ -114,7 +105,7 @@ adb -s 172.16.0.106:15555 shell
 │
 ├── rust/                  Rust 版实现
 │   ├── Cargo.toml
-│   ├── src/                   桥核心 + 三套入口（CLI / egui / Slint）
+│   ├── src/                   桥核心 + 两套入口（CLI / Slint）
 │   ├── ui/main.slint          Slint 界面描述
 │   ├── tests/                 Rust 单元测试与交叉校验基准
 │   ├── tools/                 Windows GUI 自动化、基准生成等辅助脚本
@@ -136,7 +127,6 @@ adb -s 172.16.0.106:15555 shell
 │
 └── releases/              编译产物（**不入库**，上传 GitHub Release）
     ├── adb_bridge_slint.exe   Rust 版 · Slint 图形界面
-    ├── adb_bridge_rs_gui.exe  Rust 版 · egui 图形界面
     ├── adb_bridge_rs.exe      Rust 版 · 命令行
     └── python/                Python 版 Nuitka 打包产物
 ```
