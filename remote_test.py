@@ -50,8 +50,12 @@ def main():
     extra = " ".join(sys.argv[2:])
     cmd = "cd /tmp && python3 %s %s" % (REMOTE_PATH, extra)
     print("[执行] %s" % cmd, file=sys.stderr)
+    # ⚠️ 这个超时必须能覆盖任务本身的时长。原先硬编码 900 秒（15 分钟），
+    # 跑 20 分钟长时测试时 SSH 会在测试中途被掐断（虽然 B 上的进程多半还在跑，
+    # 但流式输出全丢了，只剩一个 socket timeout）。现在可用 REMOTE_TIMEOUT 覆盖。
+    timeout = int(os.environ.get("REMOTE_TIMEOUT", "900"))
     t0 = time.time()
-    stdin, stdout, stderr = client.exec_command(cmd, timeout=900)
+    stdin, stdout, stderr = client.exec_command(cmd, timeout=timeout)
 
     out_buf = []
     while True:
