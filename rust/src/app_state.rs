@@ -9,8 +9,8 @@
 //!
 //! 这三条是桥在带界面的情况下性能不受影响的前提。
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::log::{self, Record};

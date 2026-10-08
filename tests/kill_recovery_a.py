@@ -26,7 +26,8 @@ HOST_B = "172.16.0.101"
 PORT = 15555
 BRIDGE = "%s:%d" % (HOST_A, PORT)
 HERE = os.path.dirname(os.path.abspath(__file__))
-EXE = os.path.join(HERE, "target", "release", "adb_bridge_rs.exe")
+REPO_ROOT = os.path.dirname(HERE)
+EXE = os.path.join(REPO_ROOT, "rust", "target", "release", "adb_bridge_rs.exe")
 
 
 def listening():

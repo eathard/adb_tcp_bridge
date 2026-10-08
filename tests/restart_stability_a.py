@@ -32,8 +32,10 @@ PORT = 15555
 SERIAL = "b57290249a9b3206"
 BRIDGE = "%s:%d" % (HOST_A, PORT)
 
+# 本脚本位于 tests/，产物在 rust/target/release/ 下（另有一份副本在 releases/）
 HERE = os.path.dirname(os.path.abspath(__file__))
-EXE = os.path.join(HERE, "target", "release", "adb_bridge_rs.exe")
+REPO_ROOT = os.path.dirname(HERE)
+EXE = os.path.join(REPO_ROOT, "rust", "target", "release", "adb_bridge_rs.exe")
 
 START_TIMEOUT = 10.0   # 端口进入 LISTENING 的上限
 STOP_TIMEOUT = 10.0    # 进程退出的上限

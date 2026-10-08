@@ -1,0 +1,72 @@
+[
+ {
+  "name": "CNXN",
+  "cmd": 1314410051,
+  "arg0": 16777216,
+  "arg1": 1048576,
+  "payload_len": 0,
+  "packet_len": 24,
+  "head24_hex": "434e584e00000001000010000000000000000000bcb1a7b1",
+  "packet_md5": "05e85562835029a18536b213557df243"
+ },
+ {
+  "name": "OPEN",
+  "cmd": 1313165391,
+  "arg0": 1,
+  "arg1": 0,
+  "payload_len": 8,
+  "packet_len": 32,
+  "head24_hex": "4f50454e01000000000000000800000031030000b0afbab1",
+  "packet_md5": "335472f1768c5c830670694145e03613"
+ },
+ {
+  "name": "WRTE",
+  "cmd": 1163154007,
+  "arg0": 5,
+  "arg1": 1,
+  "payload_len": 11,
+  "packet_len": 35,
+  "head24_hex": "5752544505000000010000000b0000005c040000a8adabba",
+  "packet_md5": "2af28937e5fcbcd8783c3ee3c5715234"
+ },
+ {
+  "name": "OKAY",
+  "cmd": 1497451343,
+  "arg0": 3,
+  "arg1": 4,
+  "payload_len": 0,
+  "packet_len": 24,
+  "head24_hex": "4f4b415903000000040000000000000000000000b0b4bea6",
+  "packet_md5": "d0a293ee76c52b98c98e2e85fbe38ed3"
+ },
+ {
+  "name": "CLSE",
+  "cmd": 1163086915,
+  "arg0": 7,
+  "arg1": 8,
+  "payload_len": 0,
+  "packet_len": 24,
+  "head24_hex": "434c534507000000080000000000000000000000bcb3acba",
+  "packet_md5": "fe680fee5cead48e2638a22cb3b60c99"
+ },
+ {
+  "name": "WRTE_256x4",
+  "cmd": 1163154007,
+  "arg0": 65537,
+  "arg1": 131074,
+  "payload_len": 1024,
+  "packet_len": 1048,
+  "head24_hex": "5752544501000100020002000004000000fe0100a8adabba",
+  "packet_md5": "4af5d34633d4aa443c6f726cb8b6c571"
+ },
+ {
+  "name": "WRTE_1MB",
+  "cmd": 1163154007,
+  "arg0": 65537,
+  "arg1": 65538,
+  "payload_len": 1048576,
+  "packet_len": 1048600,
+  "head24_hex": "5752544501000100020001000000100000001004a8adabba",
+  "packet_md5": "18f5fdee56554656556c4b6425345d7c"
+ }
+]

@@ -6,7 +6,7 @@ adb TCP bridge —— 在电脑 A 上运行，把本机 USB 设备 C 暴露成�
 背景：设备 C（Buildroot / Luckfox 等嵌入式板）的 adbd 无法开启 TCP 监听
       （adb tcpip 不生效），但它通过 USB 挂在本机 adb server 上。
       本桥在 A 上监听 TCP 端口，做 adb 协议转换，使电脑 B 只需：
-          adb connect <A的局域网IP>:5555
+          adb connect <A的局域网IP>:15555
       即可像普通网络设备一样使用 shell / push / pull / logcat。
 
 协议转换：
@@ -528,7 +528,10 @@ def prepare_listen_port(addr, port, auto_kill=True):
 
 def main():
     ap = argparse.ArgumentParser(description="Expose a USB adb device over TCP")
-    ap.add_argument("--listen-port", type=int, default=5555)
+    ap.add_argument("--listen-port", type=int, default=15555,
+                    # 默认端口必须避开 5555~5585：adb server 会扫描该段找模拟器，
+                    # 占用其中之一会产生 emulator-5554 幽灵设备
+                    help="TCP 监听端口（默认 15555，勿用 5555~5585）")
     ap.add_argument("--listen-addr", default="0.0.0.0")
     ap.add_argument("--serial", default=None, help="设备 serial，默认第一台在线设备")
     ap.add_argument("--server-port", type=int, default=5037)

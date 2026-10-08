@@ -7,13 +7,16 @@
 （`adb tcpip` 不生效），但它通过 USB 挂在本机 adb server 上。本桥在 A 上监听
 TCP 端口并做 ADB 协议转换。
 
-> 这是 Python 版（上级目录）的 Rust 重构，**功能等价、协议字节级兼容**。
+> 这是 `python/` 目录里 Python 版的 Rust 实现，**功能等价、协议字节级兼容**。
+>
+> 本文是 Rust 版的说明；仓库根的 [README](../README.md) 是总入口。
 > Python 版继续可用，两者可并行运行做对照。
 
 ## 快速开始
 
 ```bash
-cargo build --release
+cd rust
+cargo build --release --offline
 ./target/release/adb_bridge_rs.exe --listen-port 15555
 ```
 
@@ -100,12 +103,12 @@ cargo test --release --offline
 （基准由 `gen_python_vectors.py` 从 Python 源码导出）：
 
 ```bash
-python gen_python_vectors.py   # 重新生成基准向量
+python tools/gen_python_vectors.py   # 重新生成基准向量
 ```
 
 ### 真实设备回归结果
 
-以下均为**桥运行中**、用上级目录的现有测试脚本实测（脚本一行未改）：
+以下均为**桥运行中**、用仓库 `tests/` 目录里的脚本实测。各脚本名在归档时保持不变：
 
 | 测试 | 结果 |
 |---|---|
@@ -124,8 +127,8 @@ python gen_python_vectors.py   # 重新生成基准向量
 
 ### 反复重启稳定性
 
-`restart_stability_a.py`（CLI 启停 + 跨机功能验证）、`restart_gui_a.py`
-（GUI 进程反复启停）、`kill_recovery_a.py`（`taskkill /F` 强杀后恢复）：
+`tests/restart_stability_a.py`（CLI 启停 + 跨机功能验证）、`tests/restart_gui_a.py`
+（GUI 进程反复启停）、`tests/kill_recovery_a.py`（`taskkill /F` 强杀后恢复）：
 
 | 维度 | 轮数 | 结果 |
 |---|---|---|
@@ -152,8 +155,8 @@ python gen_python_vectors.py   # 重新生成基准向量
 
 | 界面 | 框架 | 构建 | 产物 |
 |---|---|---|---|
-| **Slint**（推荐） | 声明式保留模式 | `cargo build --release --features slint-ui` | `adb_bridge_slint.exe` |
-| egui（旧） | 即时模式 | `cargo build --release --features gui` | `adb_bridge_rs_gui.exe` |
+| **Slint**（推荐） | 声明式保留模式 | `cargo build --release --features slint-ui --offline` | `adb_bridge_slint.exe` |
+| egui（旧） | 即时模式 | `cargo build --release --features gui --offline` | `adb_bridge_rs_gui.exe` |
 
 Slint 版界面描述在 `ui/main.slint`（6 个页面：控制台 / 会话 / 运行日志 /
 参数设置 / 诊断工具 / 关于软件），业务逻辑在 `src/slint_ui.rs`，
@@ -240,14 +243,14 @@ Slint 是整窗自绘，**Win32 枚举不到子控件句柄**，只能按屏幕�
 3. 坐标要从截图精确换算：真实像素 = 显示坐标 × (窗口像素宽 / 显示图宽) + 窗口原点。
    目测常差 40~50px（按钮只有 46px 高），**点空了不报错，只会「没反应」**。
 
-配套工具（都在本目录）：
+配套工具（都在 `tools/` 目录）：
 
 | 脚本 | 用途 |
 |---|---|
-| `ui_click.py` | 按**窗口相对坐标**点击，可顺带截图（会强制置顶） |
-| `win_shot.py` | 截取窗口图像 |
-| `win_act.py` | 移动窗口到屏幕中央 |
-| `fw_allow.py` | 自动点掉 Win11 防火墙弹窗（`--xy X,Y` 或 `--wait N`） |
+| `tools/ui_click.py` | 按**窗口相对坐标**点击，可顺带截图（会强制置顶） |
+| `tools/win_shot.py` | 截取窗口图像 |
+| `tools/win_act.py` | 移动窗口到屏幕中央 |
+| `tools/fw_allow.py` | 自动点掉 Win11 防火墙弹窗（`--xy X,Y` 或 `--wait N`） |
 
 > 防火墙弹窗的类名是 `Shell_SystemDialogProxy`，`GetWindowRect` 恒返回 0×0、
 > 枚举子窗口也找不到按钮（XAML 合成器绘制）。本机有管理员权限，更省事的办法是
@@ -270,8 +273,21 @@ Slint 是整窗自绘，**Win32 枚举不到子控件句柄**，只能按屏幕�
 - 「复制连接命令」目前只写入日志，尚未真正写入系统剪贴板。
 - 托盘常驻、开机自启未实现；关闭窗口即退出。
 
+## 目录位置
+
+本目录是仓库里的 `rust/`。同级还有：
+
+| 目录 | 内容 |
+|---|---|
+| `../python/` | Python 版实现（参考实现与对照基线） |
+| `../tests/` | 回归测试脚本与留档结果，见 `../tests/README.md` |
+| `../docs/` | 软件说明书、部署指南、界面原型 |
+| `../releases/` | 编译产物（不入库，用于 GitHub Release） |
+
 ## 现状与后续
 
-已完成：协议层、日志、server、stream、session、命令行入口、端口自动清理、
-配置持久化、两套图形界面、真实设备回归。
-未完成：剪贴板、托盘常驻、开机自启、日志本地时区。
+**已完成**：协议层、日志、server、stream、session、命令行入口、端口自动清理、
+配置持久化、两套图形界面、真实设备回归、自动滚动日志页。
+
+**未完成**（不影响使用）：剪贴板、「复制连接命令」目前只写日志、托盘常驻、
+开机自启、日志本地时区。

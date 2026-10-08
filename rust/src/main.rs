@@ -26,11 +26,8 @@
 //! ⚠️ **端口必须避开 5555~5585**：本机 adb server 会扫描该段查找模拟器，
 //! 桥若占用其中之一，`adb devices` 会出现幽灵设备 emulator-5554。
 
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
-
 use adb_bridge_rs::{config, log, start_bridge};
-use adb_bridge_rs::{parse_args, Config};
+use adb_bridge_rs::parse_args;
 
 /// 把 Windows 控制台切到 UTF-8。
 ///

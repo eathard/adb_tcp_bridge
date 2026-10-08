@@ -2,7 +2,7 @@
 
 用法
 ----
-    python build_nuitka.py            # 编译，产物在 adb_tcp_bridge.dist/
+    python build_nuitka.py            # 编译，产物在 ../releases/python/adb_tcp_bridge.dist/
     python build_nuitka.py --debug    # 附带 --debug --show-scons，排查用
 
 前置条件
@@ -28,6 +28,8 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+# 编译产物统一放到仓库根的 releases/ 下（该目录不入库，供 GitHub Release 上传）
+OUT = os.path.join(os.path.dirname(ROOT), "releases", "python")
 SDK = r"C:\Program Files (x86)\Windows Kits\10"
 VSWHERE = os.path.join(os.environ["ProgramFiles(x86)"],
                        "Microsoft Visual Studio", "Installer", "vswhere.exe")
@@ -113,8 +115,9 @@ def main():
     print("    SDK   = %s" % sdkv, flush=True)
 
     # ---- 3. 清理旧产物 ----
+    os.makedirs(OUT, exist_ok=True)
     for name in ("adb_tcp_bridge.dist", "adb_tcp_bridge.build"):
-        path = os.path.join(ROOT, name)
+        path = os.path.join(OUT, name)
         if os.path.isdir(path):
             subprocess.call(["rmdir", "/s", "/q", path], shell=True)
     old_exe = os.path.join(ROOT, "adb_tcp_bridge.exe")
@@ -124,6 +127,7 @@ def main():
     # ---- 4. 编译 ----
     cmd = [sys.executable, "-m", "nuitka",
            "--standalone",
+           "--output-dir=%s" % OUT,
            "--msvc=latest",
            "--assume-yes-for-downloads",
            "--remove-output",
@@ -142,7 +146,7 @@ def main():
         print("    崩溃报告: nuitka-crash-report.xml", flush=True)
         return rc
 
-    exe = os.path.join(ROOT, "adb_tcp_bridge.dist", "adb_tcp_bridge.exe")
+    exe = os.path.join(OUT, "adb_tcp_bridge.dist", "adb_tcp_bridge.exe")
     if not os.path.isfile(exe):
         print("==> 未找到产物", flush=True)
         return 1

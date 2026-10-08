@@ -13,7 +13,6 @@
 //! 必须逐字节容错处理。Python 版靠 `errors="replace"` 解决，
 //! Rust 的 `String::from_utf8_lossy` 行为等价。
 
-use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr, TcpListener};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};

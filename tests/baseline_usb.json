@@ -1,0 +1,352 @@
+[
+ {
+  "idx": 1,
+  "cmd": "head -c 65536 /usr/bin/awk | md5sum",
+  "rc": 0,
+  "out": "f42a47dd625ec4e9c32f73d22972ec2a  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 2,
+  "cmd": "head -c 8192 /usr/bin/awk | cksum",
+  "rc": 0,
+  "out": "2862093793 8192\r\n",
+  "err": ""
+ },
+ {
+  "idx": 3,
+  "cmd": "head -c 3000 /usr/bin/awk | base64 | md5sum",
+  "rc": 0,
+  "out": "d748156d5b8c56f2e72dbddd9cbae796  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 4,
+  "cmd": "head -c 3000 /usr/bin/awk | base64 | base64 -d | md5sum",
+  "rc": 0,
+  "out": "db32eb59725f275759fa4d69b1453d42  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 5,
+  "cmd": "head -c 65536 /usr/bin/awk | od -An -tx1 | tr ' ' '\\n' | grep -c '^00$'",
+  "rc": 0,
+  "out": "18635\r\n",
+  "err": ""
+ },
+ {
+  "idx": 6,
+  "cmd": "head -c 4096 /usr/bin/awk | od -An -tx1 | tail -2",
+  "rc": 0,
+  "out": " 77 0c 00 00 00 00 00 00 00 00 00 00 12 00 00 00\r\n 9a 03 00 00 00 00 00 00 00 00 00 00 12 00 00 00\r\n",
+  "err": ""
+ },
+ {
+  "idx": 7,
+  "cmd": "printf '\\x00\\x01\\x7f\\x80\\xff\\xfe' | od -An -tx1 | tr -s ' '",
+  "rc": 0,
+  "out": " 00 01 7f 80 ff fe\r\n",
+  "err": ""
+ },
+ {
+  "idx": 8,
+  "cmd": "grep -E '^(root|daemon|www)' /etc/passwd | wc -l",
+  "rc": 0,
+  "out": "3\r\n",
+  "err": ""
+ },
+ {
+  "idx": 9,
+  "cmd": "printf 'aabbaabbb\\n' | grep -o '\\(ab\\)\\{2,\\}' | wc -l",
+  "rc": 0,
+  "out": "0\r\n",
+  "err": ""
+ },
+ {
+  "idx": 10,
+  "cmd": "printf 'xyx\\nabc\\n' | grep -cE '^(.)\\1$'",
+  "rc": 1,
+  "out": "0\r\n",
+  "err": ""
+ },
+ {
+  "idx": 11,
+  "cmd": "cat /etc/passwd | grep -c '[0-9]\\{3\\}'",
+  "rc": 0,
+  "out": "5\r\n",
+  "err": ""
+ },
+ {
+  "idx": 12,
+  "cmd": "sed -n 's/^\\([^:]*\\):.*/\\1/p' /etc/group | head -6 | tr '\\n' ' '; echo",
+  "rc": 0,
+  "out": "root daemon bin sys adm tty \r\n",
+  "err": ""
+ },
+ {
+  "idx": 13,
+  "cmd": "awk -F: '{ if ($3>=1000) printf \\\"U:%s\\n\\\", $1; else if ($7 ~ /nologin$/) printf \\\"N:%s\\n\\\", $1 }' /etc/passwd | sort",
+  "rc": 0,
+  "out": "",
+  "err": "awk: cmd. line:1: Unexpected token\r\n"
+ },
+ {
+  "idx": 14,
+  "cmd": "awk '{c[length($0)]++} END{for (n in c) printf \\\"%d:%d \\\", n, c[n]}' /etc/passwd; echo",
+  "rc": 0,
+  "out": "\r\n",
+  "err": "awk: cmd. line:1: Unexpected token\r\n"
+ },
+ {
+  "idx": 15,
+  "cmd": "echo abcdef | awk '{print toupper(substr($0,2,3)), length($0), index($0,\\\"cd\\\")}'",
+  "rc": 1,
+  "out": "",
+  "err": "awk: cmd. line:1: Unexpected token\r\n"
+ },
+ {
+  "idx": 16,
+  "cmd": "printf 'l1\\nl2\\nl3\\n' > /tmp/d1.txt; printf 'l1\\nX\\nl3\\n' > /tmp/d2.txt; diff /tmp/d1.txt /tmp/d2.txt | wc -l; rm -f /tmp/d1.txt /tmp/d2.txt",
+  "rc": 0,
+  "out": "7\r\n",
+  "err": ""
+ },
+ {
+  "idx": 17,
+  "cmd": "bash -c 'a=(x y z w); echo ${a[2]} ${#a[@]} ${a[@]:1:2}'",
+  "rc": 0,
+  "out": "z 4 y z\r\n",
+  "err": ""
+ },
+ {
+  "idx": 18,
+  "cmd": "bash -c 'declare -A m; for k in c a b; do m[$k]=${#k}; done; for k in \\\"${!m[@]}\\\"; do echo $k${m[$k]}; done | sort | tr \\\"\\\\n\\\" \\\" \\\"; echo'",
+  "rc": 0,
+  "out": "\"c\"a\"\"b1\"\r\n",
+  "err": ""
+ },
+ {
+  "idx": 19,
+  "cmd": "bash -c 'diff <(seq 1 5) <(seq 1 6) | head -3'",
+  "rc": 0,
+  "out": "--- /dev/fd/63\r\n+++ /dev/fd/62\r\n@@ -3,3 +3,4 @@\r\n",
+  "err": ""
+ },
+ {
+  "idx": 20,
+  "cmd": "bash -c 'wc -l <(printf \\\"a\\nb\\nc\\n\\\")'",
+  "rc": 0,
+  "out": "0 /dev/fd/63\r\n",
+  "err": ""
+ },
+ {
+  "idx": 21,
+  "cmd": "bash -c 'rm -f /tmp/np.$$; mkfifo /tmp/np.$$ && { printf \\\"FIFO_OK\\n\\\" > /tmp/np.$$ & } && cat /tmp/np.$$ && rm -f /tmp/np.$$'",
+  "rc": 0,
+  "out": "\"FIFO_OKn\"",
+  "err": ""
+ },
+ {
+  "idx": 22,
+  "cmd": "bash -c 'trap \\\"echo TRAP_EXIT\\\" EXIT; echo BODY; exit 3'; echo rc=$?",
+  "rc": 0,
+  "out": "BODY\r\nrc=3\r\n",
+  "err": "bash: line 1: trap: TRAP_EXIT\": invalid signal specification\r\nbash: exit trap: line 1: unexpected EOF while looking for matching `\"'\r\n"
+ },
+ {
+  "idx": 23,
+  "cmd": "bash -c 'trap \\\"echo TRAP_TERM\\\" TERM; kill -TERM $$; echo AFTER'",
+  "rc": 0,
+  "out": "AFTER\r\n",
+  "err": "bash: line 1: trap: TRAP_TERM\": invalid signal specification\r\nbash: trap: line 1: unexpected EOF while looking for matching `\"'\r\n"
+ },
+ {
+  "idx": 24,
+  "cmd": "bash -c 'echo $((1<<20)) $((255>>4)) $((7&3)) $((7|8)) $((7^5)) $((~0 & 255))'",
+  "rc": 0,
+  "out": "1048576 15 3 15 2 255\r\n",
+  "err": ""
+ },
+ {
+  "idx": 25,
+  "cmd": "bash -c 'p=/a/b/c.txt; echo ${p##*/} ${p%.*} ${p%/*} ${#p}; s=abcdef; echo ${#s} ${s:1:3} ${s//b/X} ${s/#a/A} ${s/%f/Z}'",
+  "rc": 0,
+  "out": "c.txt /a/b/c /a/b 10\r\n6 bcd aXcdef Abcdef abcdeZ\r\n",
+  "err": ""
+ },
+ {
+  "idx": 26,
+  "cmd": "bash -c 'set -euo pipefail; echo A; false; echo NOT_REACHED' 2>&1; echo rc=$?",
+  "rc": 0,
+  "out": "A\r\nrc=1\r\n",
+  "err": ""
+ },
+ {
+  "idx": 27,
+  "cmd": "bash -c 'set -o pipefail; false | true; echo rc=$?'",
+  "rc": 0,
+  "out": "rc=1\r\n",
+  "err": ""
+ },
+ {
+  "idx": 28,
+  "cmd": "find /etc -maxdepth 2 -name '*.conf' -exec grep -l -m1 '.' {} + 2>/dev/null | sort | md5sum",
+  "rc": 0,
+  "out": "2ca9e424e40aac13e7f0a12d0f79770c  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 29,
+  "cmd": "find /etc -maxdepth 2 -type f -exec sh -c 'printf \\\"%s\\n\\\" \\\"$1\\\"' _ {} \\; 2>/dev/null | sort | head -10 | md5sum",
+  "rc": 0,
+  "out": "8ef56ec7e1e85edfb7dff86b22f92c46  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 30,
+  "cmd": "find /etc -maxdepth 1 -name '*.conf' -print0 2>/dev/null | xargs -0 -r ls | md5sum",
+  "rc": 0,
+  "out": "0e2d7880d04476f54844c7f9070c630c  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 31,
+  "cmd": "find /usr/bin -maxdepth 1 -type f -size +50k 2>/dev/null | wc -l",
+  "rc": 0,
+  "out": "49\r\n",
+  "err": ""
+ },
+ {
+  "idx": 32,
+  "cmd": "seq 1 20 | xargs -n1 sh -c 'printf \\\"%s:\\\" $0' | md5sum",
+  "rc": 0,
+  "out": "5c073e362abc773485fb7a8317f3171e  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 33,
+  "cmd": "seq 1 100 | xargs -P 4 -n 1 echo | sort | md5sum",
+  "rc": 0,
+  "out": "78dcb1fe302152bb297e947d7856c393  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 34,
+  "cmd": "find /etc -type f 2>/dev/null | wc -l",
+  "rc": 0,
+  "out": "129\r\n",
+  "err": ""
+ },
+ {
+  "idx": 35,
+  "cmd": "sh -c 'exit 42'; echo rc=$?",
+  "rc": 0,
+  "out": "rc=42\r\n",
+  "err": ""
+ },
+ {
+  "idx": 36,
+  "cmd": "bash -c 'exit 255'; echo rc=$?",
+  "rc": 0,
+  "out": "rc=255\r\n",
+  "err": ""
+ },
+ {
+  "idx": 37,
+  "cmd": "true && echo AND_OK || echo AND_FAIL",
+  "rc": 0,
+  "out": "AND_OK\r\n",
+  "err": ""
+ },
+ {
+  "idx": 38,
+  "cmd": "false && echo AND_OK || echo AND_FAIL",
+  "rc": 0,
+  "out": "AND_FAIL\r\n",
+  "err": ""
+ },
+ {
+  "idx": 39,
+  "cmd": "{ echo o1; echo e1 >&2; } 2>/dev/null | md5sum",
+  "rc": 0,
+  "out": "332e06c8c6e83d58a6470a44d9745ea7  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 40,
+  "cmd": "{ echo o1; echo e1 >&2; } 2>&1 | md5sum",
+  "rc": 0,
+  "out": "c949f8bd8ee1ba6aaa9abc6dc6108a25  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 41,
+  "cmd": "false | wc -l",
+  "rc": 0,
+  "out": "0\r\n",
+  "err": ""
+ },
+ {
+  "idx": 42,
+  "cmd": "seq 1 200000 | head -c 3000000 | md5sum",
+  "rc": 0,
+  "out": "0e10426a1d5bddffcef02f1345787128  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 43,
+  "cmd": "head -c 1000000 /dev/zero | tr '\\0' 'a' | wc -c",
+  "rc": 0,
+  "out": "1000000\r\n",
+  "err": ""
+ },
+ {
+  "idx": 44,
+  "cmd": "head -c 2000000 /usr/bin/awk | md5sum",
+  "rc": 0,
+  "out": "140140ee7cd105de73f88ebc7a9c9097  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 45,
+  "cmd": "printf 'x%.0s' $(seq 1 20000) | wc -c",
+  "rc": 0,
+  "out": "20000\r\n",
+  "err": ""
+ },
+ {
+  "idx": 46,
+  "cmd": "seq 1 20000 | sed 's/^/E/' 2>&1 | md5sum",
+  "rc": 0,
+  "out": "9a04a6661b730e03861af736765910c9  -\r\n",
+  "err": ""
+ },
+ {
+  "idx": 47,
+  "cmd": "seq 1 100000 | head -3",
+  "rc": 0,
+  "out": "1\r\n2\r\n3\r\n",
+  "err": ""
+ },
+ {
+  "idx": 48,
+  "cmd": "yes bridge | head -5 | tr -d '\\n' | wc -c",
+  "rc": 0,
+  "out": "30\r\n",
+  "err": ""
+ },
+ {
+  "idx": 49,
+  "cmd": "printf '' | wc -c",
+  "rc": 0,
+  "out": "0\r\n",
+  "err": ""
+ },
+ {
+  "idx": 50,
+  "cmd": "cat /etc/passwd | seq 1 30000 | awk 'END{print NR}'",
+  "rc": 0,
+  "out": "30000\r\n",
+  "err": ""
+ }
+]

@@ -87,7 +87,11 @@ pub struct StreamStats {
 
 /// 上行写队列：主线程只入队，写线程负责真正的 sendall。
 pub struct Writer {
+    /// 写线程与主线程共享的队列 / 关闭标志。
+    /// 当前通过 `Writer::spawn` 交出的克隆句柄使用，struct 自身保留一份便于扩展。
+    #[allow(dead_code)]
     queue: Arc<(Mutex<WriterState>, Condvar)>,
+    #[allow(dead_code)]
     closed: Arc<AtomicBool>,
 }
 

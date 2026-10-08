@@ -1,33 +1,57 @@
-# Python 缓存与编译产物
+# ==========================================================================
+# ADB TCP 桥 —— 仓库级忽略规则
+# ==========================================================================
+
+# ---- Python ----
 __pycache__/
 *.py[cod]
 *.pyc
+.venv/
+venv/
 
-# 桥的调试日志（--debug-packets 会输出）
-_bridge_debug.log
-*.log
+# ---- Rust 构建产物（另见 rust/.gitignore）----
+rust/target/
 
-# 但测试结果日志要留档（稳定性测试的证据）
-!restart_30.log
-!restart_gui_15.log
-!kill_recovery_12.log
-!ping_stability_b.log
+# ---- 编译产物 / 发布目录 ----
+# releases/ 下的二进制不入库，改为上传到 GitHub Release；
+# 目录里的 README.md 会入库（说明产物来源与上传方法）。
+releases/*.exe
+releases/*.dll
+releases/*.pdb
+releases/*.zip
+releases/python/
 
-# 测试生成的二进制与大文件
-*.bin
-_t_*.txt
-_out_*.txt
-*.zip
-
-# 临时目录
-_tmp/
-_sshpub/
-official_adb/
-# Nuitka 编译产物
+# ---- Nuitka 编译产物 ----
 adb_tcp_bridge.dist/
 adb_tcp_bridge.build/
 adb_tcp_bridge.exe
 nuitka-crash-report.xml
 
-# 一致性测试的设备输出基线（随固件/文件系统变化，需按需重新生成）
-baseline_usb.json
+# ---- 调试日志 ----
+# 桥的 --debug-packets 会输出大量报文日志，忽略
+_bridge_debug.log
+*.log
+# 但稳定性测试的**结果日志要留档**（是测试通过与否的证据）
+!tests/results/*.log
+
+# ---- 测试生成的临时大文件 ----
+*.bin
+_t_*.txt
+_out_*.txt
+*.zip
+_tmp/
+_sshpub/
+official_adb/
+
+# ---- 界面调试截图 ----
+*.png
+
+# ---- 历史决策记录：仅本地保留，不上传 GitHub ----
+rust/docs/重构计划.md
+
+# ---- 编辑器 / 系统 ----
+.vs/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini

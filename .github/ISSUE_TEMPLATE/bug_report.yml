@@ -1,0 +1,75 @@
+name: 问题反馈
+description: 报告一个明确的故障
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    value: |
+      提 bug 前请先读 [`docs/软件说明书.md`](../../docs/软件说明书.md) 的
+      「故障处理」一节 —— 很多现象那里已经有答案。
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: 用的是哪个版本
+      options:
+        - Rust 版 · Slint 图形界面（adb_bridge_slint.exe）
+        - Rust 版 · egui 图形界面（adb_bridge_rs_gui.exe）
+        - Rust 版 · 命令行（adb_bridge_rs.exe）
+        - Python 版源码（python/adb_tcp_bridge.py）
+        - Python 版 Nuitka 打包 exe
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 现象
+      description: 看到了什么？期望看到什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 在 A 上启动桥（用的什么参数）
+        2. 在 B 上执行 adb connect ...
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: symptom
+    attributes:
+      label: 连接失败时是哪种错误
+      description: 这两者根因完全不同，请务必区分
+      options:
+        - 连接超时（长时间无响应后被拒）——多半是防火墙丢包
+        - 连接被拒绝（立刻失败）——多半是桥没在监听
+        - 能连上但命令失败
+        - 不涉及连接问题
+    validations:
+      required: false
+
+  - type: textarea
+    id: env
+    attributes:
+      label: 环境
+      placeholder: |
+        - 电脑 A 系统与 adb 版本（adb version）
+        - 电脑 B 系统与 adb 版本
+        - 设备 C 型号与系统
+        - 监听端口
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 桥的日志
+      description: 用 `--debug-packets` 跑一次最有价值。注意脱敏 IP 等信息。
+      render: shell
+    validations:
+      required: false

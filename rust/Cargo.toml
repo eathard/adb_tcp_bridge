@@ -1,9 +1,37 @@
+# ============================================================================
+# ⚠️ 编译前必读：Slint 依赖用的是 **本机路径**，换机器无法直接编译
+# ============================================================================
+# 下面 `slint` / `slint-build` 是 path 依赖，指向本仓库开发机 D 盘的 Slint 源码
+# 检出（含已编译产物），目的是复用本机依赖缓存，避免重新下载上千个 crate。
+#
+#   → **仅本机可编译**。其他人拿到本仓库直接 `cargo build` 会失败
+#     （找不到 D:/slint-ui/slint）。
+#
+#   → **想要编译此程序，请把 Cargo.toml 里这两行改成版本号**：
+#
+#         [dependencies]
+#         slint = { version = "1.16", optional = true, default-features = false,
+#                   features = ["std", "backend-default", "renderer-femtovg",
+#                               "compat-1-2"] }
+#
+#         [build-dependencies]
+#         slint-build = { version = "1.16", optional = true }
+#
+#     改完后首次编译需要联网下载依赖（约 16 分钟）。
+#
+# 不需要界面时（只用 CLI）不受影响：`cargo build --release` 不启用 slint-ui
+# 特性，不会解析 Slint，无需改动任何依赖。
+# ============================================================================
+
 [package]
 name = "adb_bridge_rs"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-description = "ADB TCP 桥 —— Rust 重构版（将 USB 设备暴露为标准 TCP adb 设备）"
+description = "ADB TCP 桥 —— Rust 版（把仅支持 USB 的 adb 设备暴露为标准 TCP adb 设备）"
 license = "GPL-3.0-only"
+readme = "README.md"
+keywords = ["adb", "android", "bridge", "tcp", "usb"]
+categories = ["command-line-utilities", "development-tools::debugging"]
 
 [[bin]]
 name = "adb_bridge_rs"

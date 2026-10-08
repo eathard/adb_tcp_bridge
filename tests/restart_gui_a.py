@@ -23,7 +23,8 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-EXE = os.path.join(HERE, "target", "release", "adb_bridge_slint.exe")
+REPO_ROOT = os.path.dirname(HERE)
+EXE = os.path.join(REPO_ROOT, "rust", "target", "release", "adb_bridge_slint.exe")
 TITLE = "ADB TCP 桥控制台"
 WIN_TIMEOUT = 25.0
 

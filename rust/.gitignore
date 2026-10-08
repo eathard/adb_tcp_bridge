@@ -1,0 +1,13 @@
+# Rust 构建产物
+target/
+
+# 界面调试截图与临时文件
+*.png
+*.log
+*.bin
+*.txt.tmp
+win_check.txt
+
+# 注意：`tests/python_vectors.json` 是 Rust 单测用的交叉校验基准，
+# 由 tools/gen_python_vectors.py 从 Python 源码导出。虽然可重新生成，
+# 但为了让 `cargo test` 在全新克隆上开箱即用，**故意不忽略**，随仓库入库。

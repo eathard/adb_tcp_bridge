@@ -12,14 +12,17 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::log;
 use crate::proto::{self, cmd};
 use crate::server;
 use crate::stats;
-use crate::stream::{self, Flow, StreamStats};
+use crate::stream::{self, StreamStats};
+
+// 仅单元测试里用到（起并发线程验证流控），正式编译不需要
+#[cfg(test)]
+use std::thread;
 
 /// 会话共享状态。
 pub struct Shared {
@@ -44,6 +47,9 @@ pub struct SessionInfo {
 /// 一条活跃 stream。
 struct ActiveStream {
     local_id: u32,
+    /// 对端（客户端）分配的 local_id。协议上是对称的，
+    /// 当前实现只按 local_id 索引，但保留字段以便排障时对照。
+    #[allow(dead_code)]
     our_id: u32,
     service: String,
     /// 下行（设备→客户端）流控状态：已发给客户端但未收到 OKAY 的字节。
@@ -155,7 +161,7 @@ pub fn run(shared: Arc<Shared>, mut client: TcpStream) {
     let sess = stats::session_begin(&peer);
 
     let mut total_up: u64 = 0;
-    let mut total_down: u64 = 0;
+    let total_down: u64 = 0;
     let started = Instant::now();
 
     // ---- 主循环 ----
@@ -470,7 +476,6 @@ pub fn format_stream_stat(s: &StreamStats) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write as _;
 
     /// 起一个临时监听，写入 `payload`，然后让客户端用 read_packet 读回。
     /// 返回 read_packet 的结果。
