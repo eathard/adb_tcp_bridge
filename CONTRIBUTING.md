@@ -75,6 +75,31 @@ python stress_test.py               # 基础压测
 - 一个提交只做一件事
 - 改了行为就同步更新 `CHANGELOG.md` 与相关文档
 
+## 版本号改动清单
+
+发版时版本号散落在多处，且 **Slint 界面读不到 `Cargo.toml`**（版本号是
+硬编码的字符串），漏改就会显示成旧版本。按下面清单逐处同步：
+
+| # | 位置 | 写法 |
+|---|---|---|
+| 1 | `rust/Cargo.toml` 的 `version` | `1.0.0` |
+| 2 | `rust/Cargo.lock` 里本包的 `version` | 紧跟上一条，由 cargo 自动同步 |
+| 3 | **`rust/ui/main.slint`** 的底部版权行 | `adb_bridge_rs v1.0.0 · GPL-3.0-only` |
+| 4 | `CHANGELOG.md` 的版本标题与「命名约定」 | `## [1.0.0]` |
+| 5 | `docs/软件说明书.md` 开头的「版本」 | `1.0.0` |
+| 6 | `docs/部署指南.md` 开头的「适用版本」 | `1.0.0` |
+| 7 | `releases/README.md` 的 tag / Release 命令 | `v1.0.0` |
+| 8 | Git 附注标签 | `git tag -a v1.0.0 -m "..."` |
+
+注意事项：
+
+- 版本号**必须是三段式**。`Cargo.toml` 写 `1.0` 会直接报
+  `unexpected end of input while parsing minor version number`（semver 要求）。
+- 改了 `ui/main.slint` 后**必须重新编译** Slint 版才能让界面显示新版本号：
+  `cargo build --release --features slint-ui --offline`（约 16 分钟）。
+- 改完提交后，把标签移到最新提交：`git tag -f v1.0.0 <commit>`，
+  否则标签会落在旧版本上。
+
 ## 提 Issue
 
 提 bug 时请附上：

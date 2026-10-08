@@ -944,8 +944,11 @@ export component MainWindow inherits Window {
                             background: Pal.border;
                         }
 
+                        // ⚠️ 版本号硬编码在此。Slint 无法读 Cargo.toml，
+                        //   所以发版时必须手动同步 —— 清单见 CONTRIBUTING.md
+                        //   「版本号改动清单」，漏改会出现界面与包版本不一致。
                         Text {
-                            text: "adb_bridge_rs v0.1.0 · GPL-3.0-only";
+                            text: "adb_bridge_rs v1.0.0 · GPL-3.0-only";
                             color: Pal.text-dim;
                             font-size: 11px;
                         }
