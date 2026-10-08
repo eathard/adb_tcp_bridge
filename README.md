@@ -20,6 +20,9 @@
 
 ## 快速开始
 
+> **推荐用 Rust 版**（`adb_bridge_rs/`）：有图形界面、启动更快、并发更稳。
+> 下述命令是Python 版的，Python 版继续可用，两者可并行做对照。
+
 ```bash
 # 1. 电脑 A：启动桥（启动时会自动清理占用该端口的残留进程）
 python adb_tcp_bridge.py --listen-port 15555
@@ -29,7 +32,17 @@ adb connect 172.16.0.106:15555
 adb -s 172.16.0.106:15555 shell
 ```
 
-免Python 的部署方式：
+Rust 版（图形界面版）：
+
+```bash
+cd adb_bridge_rs
+# 图形界面（双击 exe 即可，无需 Python）
+./target/release/adb_bridge_slint.exe
+# 命令行版
+./target/release/adb_bridge_rs.exe --listen-port 15555
+```
+
+免 Python 的部署方式：
 
 ```bash
 # 编译（一次性）
@@ -39,11 +52,16 @@ adb_tcp_bridge.dist\adb_tcp_bridge.exe --listen-port 15555
 ```
 
 > 前置条件：本机已安装 adb 且在 PATH 中。设备 C 的 adb 驱动由厂商定制，需用厂商提供的 adb。
+>
+> ⚠️ **首次运行前务必确认防火墙**：若 A 能连而 B 连不上，多半是入站放行规则的
+> 端口字段写错了。用 `netsh advfirewall firewall show rule name=<规则名> dir=in verbose`
+> 核对本地端口确实是 15555。判据：`连接超时` = 被防火墙丢包，`连接被拒绝` = 没在监听。
 
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
+| [Rust 版说明](adb_bridge_rs/README.md) | 架构、协议实现约束、界面约束、测试结果、重启稳定性 |
 | [软件说明书](docs/软件说明书.md) | 原理（两侧协议不对称分析）、参数、工作原理、技术规格、故障处理、安全说明 |
 | [部署指南](docs/部署指南.md) | 6 步部署流程、端到端验收、卸载、参数速查、多设备场景 |
 
@@ -77,11 +95,20 @@ adb_tcp_bridge.dist\adb_tcp_bridge.exe --listen-port 15555
 | `diag_exec.py` | exec-out 并发与尺寸诊断 |
 | `weaknet_proxy.py` / `weaknet_run.py` / `weaknet_client.py` | 应用层弱网代理与五档编排 |
 
+Rust 版另有自己的稳定性测试（`adb_bridge_rs/` 下，详见其 README）：
+
+| 文件 | 说明 |
+|---|---|
+| `restart_stability_a.py` | CLI 反复启停 + 跨机功能验证（30 轮） |
+| `restart_gui_a.py` | GUI 进程反复启停（15 轮） |
+| `kill_recovery_a.py` | `taskkill /F` 强杀后端口接管与功能恢复（12 轮） |
+| `stress_advanced_win.py` | Windows 版进阶压测（大文件 md5 校验） |
+
 ## 常用参数
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
-| `--listen-port` | 5555 | 监听端口。**建议 15555**，避开 5555~5585（adb server 会把那段当模拟器端口） |
+| `--listen-port` | **15555** | 监听端口。**不可用 5555~5585**（adb server 会把那段当模拟器端口，导致出现 `emulator-5554` 幽灵设备） |
 | `--listen-addr` | 0.0.0.0 | 监听地址 |
 | `--serial` | 第一台在线设备 | 多设备时指定 |
 | `--no-kill-port` | 关 | 端口被占用时不自动清理，只报告 |

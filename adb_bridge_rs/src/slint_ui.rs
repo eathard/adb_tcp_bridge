@@ -36,6 +36,19 @@ struct Ctx {
     toast: String,
     /// 诊断结果
     diag: Vec<(String, bool, String)>,
+    /// 上一轮显示给界面的日志。用来判断内容是否真的变了 ——
+    /// 只看条数不够，清空日志时长数会变、滚动条最短的日志被挤出时条数也不变。
+    log_cache: Vec<LogRow>,
+    /// 日志滚动触发计数。每次内容变化 +1，界面侧 `changed log-tick` 靠它唤醒滚动。
+    log_tick: i32,
+}
+
+/// 比较两批日志是否不同（逐字段比，因为 LogRow 不实现 PartialEq）。
+fn rows_differ(a: &[LogRow], b: &[LogRow]) -> bool {
+    a.len() != b.len()
+        || a.iter()
+            .zip(b.iter())
+            .any(|(x, y)| x.time != y.time || x.level != y.level || x.text != y.text)
 }
 
 /// 启动 Slint 界面。
@@ -77,6 +90,8 @@ pub fn run(cfg: Config) {
         bridge: None,
         toast: String::new(),
         diag: Vec::new(),
+        log_cache: Vec::new(),
+        log_tick: 0,
     }));
 
     // 首屏：把配置写进界面
@@ -88,6 +103,7 @@ pub fn run(cfg: Config) {
         ui.set_set_serial(SharedString::from(g.state.serial.clone()));
         ui.set_set_no_kill(g.state.no_kill_port);
         ui.set_set_debug(g.state.debug_packets);
+        ui.set_auto_scroll(g.state.auto_scroll);
     }
 
     bind_callbacks(&ui, &ctx);
@@ -108,7 +124,7 @@ pub fn run(cfg: Config) {
                 Err(_) => return,
             };
             g.state.refresh_from_stats();
-            sync_ui(&ui, &g);
+            sync_ui(&ui, &mut g);
         },
     );
 
@@ -116,7 +132,12 @@ pub fn run(cfg: Config) {
 }
 
 /// 把上下文状态写进界面属性。
-fn sync_ui(ui: &MainWindow, g: &Ctx) {
+///
+/// 参数是 `&mut Ctx` 而不是 `&Ctx`：这里要从界面读回「自动滚动」开关写进
+/// state，并递增日志滚动触发计数，两者都是写操作。
+fn sync_ui(ui: &MainWindow, g: &mut Ctx) {
+    // 从界面读回自动滚动开关，以界面为准（初始化顺序上 AppState 可能是旧的）
+    g.state.auto_scroll = ui.get_auto_scroll();
     let st = &g.state;
     ui.set_page(st.page as i32);
     ui.set_status_label(SharedString::from(st.bridge_state.label()));
@@ -171,7 +192,19 @@ fn sync_ui(ui: &MainWindow, g: &Ctx) {
             text: SharedString::from(r.message),
         })
         .collect();
+    // 先比较再赋值：只有内容真的变了才通知界面滚动。
+    // 每 300ms 刷一次，如果无条件递增 tick，哪怕没有新日志也会每 0.3s
+    // 触发一次滚动 —— 用户想往上翻历史日志会被反复拽回底部。
+    let rows_changed = rows_differ(&g.log_cache, &logs);
+    if rows_changed {
+        g.log_cache = logs.clone();
+        // 通知界面滚到底
+        g.log_tick = g.log_tick.wrapping_add(1);
+    }
     ui.set_logs(ModelRc::new(VecModel::from(logs)));
+    if rows_changed {
+        ui.set_log_tick(g.log_tick);
+    }
 
     // 诊断结果
     let diag: Vec<DiagRow> = g

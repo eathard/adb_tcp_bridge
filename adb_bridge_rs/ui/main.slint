@@ -191,7 +191,7 @@ component IconChip inherits Rectangle {
 }
 
 // 拓扑节点：圆形 + 图标 + 标题 + 副标题
-// icon-kind: 0 = 显示器（电脑）���1 = 芯片（设备）
+// icon-kind: 0 = 显示器（电脑），1 = 芯片（设备）
 // highlight=true 用于强调中间那台跑桥的电脑 A
 component TopoCircle inherits Rectangle {
     in property <int> icon-kind: 0;
@@ -348,6 +348,91 @@ component TopoLink inherits Rectangle {
     }
 }
 
+// 日志列表。
+//
+// 包一层自定义组件，而不是直接用 ListView —— 因为 std-widgets 的ListView
+// 是编译进二进制的内置组件，**不允许加 id**（实测报Unknown property id in
+// ListView），所以没法从外部引用它、也就没法程序化滚动 viewport-y。
+// 自己包一层后 id 就落在自定义组件上，可以正常用。
+component LogList inherits Rectangle {
+    in property <[LogRow]> rows;
+    // 是否跟随新内容滚到底（界面上就是「自动滚动」那个勾选框）
+    in-out property <bool> follow: true;
+    // Rust 侧在日志**内容真的变了**时递增
+    in property <int> tick: 0;
+
+    background: Pal.card;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: Pal.border;
+
+    // 用 ListView，**不要**自己用 Flickable/ScrollView 拼。
+    //
+    // 为什么之前那套自绘滚动全错（根因，来自 Slint 源码）：
+    //   internal/compiler/passes/flickable.rs 计算 viewport-height 时会
+    //   `.filter(|x| x.borrow().repeated.is_none())` —— **跳过 for 循环产生
+    //   的子元素**，且只统计类型是 layout 的直接子元素。我的 Flickable 里
+    //   唯一的直接子元素是 TouchArea（不是 layout），于是
+    //   viewport-height == height，max-scroll() 恒为 0，bottom-offset()
+    //   恒为 0 —— 自动滚动每次都把列表拽回**顶部**，表现为「没生效」；
+    //   而 Flickable 本身也不画滚动条。
+    //
+    // ListView 自带：
+    //   - 滚动条（滚动条需要 maximum = viewport-height - visible-height，
+    //     既然原版的滚动条一直是好的，说明 viewport-height 它算得对）
+    //   - 滚轮（内部 TouchArea 的 scroll-event 调整 viewport-y）
+    // 所以这里只管一件事：新日志到达时把 viewport-y 推到底。
+    list := ListView {
+        padding: 8px;
+        for r in root.rows: HorizontalLayout {
+            spacing: 10px;
+            alignment: start;
+            Text {
+                text: r.time;
+                width: 82px;
+                color: Pal.text-dim;
+                font-size: 11px;
+                font-family: "Cascadia Mono";
+            }
+            Text {
+                text: r.level;
+                width: 46px;
+                color: r.level == "ERROR" ? Pal.danger : (r.level == "WARN" ? Pal.warn : Pal.text-dim);
+                font-size: 11px;
+            }
+            Text { text: r.text; color: Pal.text; font-size: 11px; wrap: word-wrap; }
+        }
+    }
+
+    // 上次已经滚过的 tick。只在 tick 变化时才滚，避免每 0.1s 无条件把用户
+    // 正在翻的历史日志强行拽回底部（之前就是这样「滚太快、日志被顶没」）。
+    private property <int> handled-tick: 0;
+
+    // 常驻重复 Timer。新日志到达（tick 变化）后滚到底一次。
+    //
+    // 为什么不用一次性 Timer + changed tick => restart()：restart() 只重置
+    // 计时，不会把 running 从 false 拉起来，Timer 根本不触发。所以保持
+    // running: true，用「tick 是否变化」当触发条件。
+    //
+    // viewport-y 的符号约定（来自 fluent/scrollview.slint 的 scrollbar）：
+    // 向下滚 = 往**负**方向，0 是顶、-(viewport-height - visible-height) 是底。
+    // 内容没溢出时（viewport-height <= visible-height）不滚，否则偏移为正、
+    // 反而把第一行顶出视野。
+    Timer {
+        interval: 100ms;
+        running: true;
+        triggered => {
+            if (root.tick != root.handled-tick) {
+                root.handled-tick = root.tick;
+                if (root.follow
+                    && list.viewport-height > list.visible-height) {
+                    list.viewport-y = -(list.viewport-height - list.visible-height);
+                }
+            }
+        }
+    }
+}
+
 export component MainWindow inherits Window {
     title: "ADB TCP 桥控制台";
     // ⚠️ 必须显式指定中文字体族，否则汉字全是方块
@@ -404,6 +489,16 @@ export component MainWindow inherits Window {
     in-out property <bool> set-no-kill: false;
     in-out property <bool> set-debug: false;
     in-out property <bool> auto-refresh: true;
+    // 日志自动滚动：新日志到达时把列表拉到最底部。
+    // 单独做成开关而不是恒定行为 —— 排障时经常要往上翻之前的日志，
+    // 一有新日志就被拽回底部会很烦。
+    in-out property <bool> auto-scroll: true;
+    // 日志滚动触发器：Rust 侧每次刷新日志就+1，用来唤醒下面的 Timer。
+    //
+    // 为什么不让 .slint 自己监听日志变化：`changed` 只能监听**本组件声明的属性**
+    // （写法是 `changed the-property => {...}`），写 `changed root.logs.length`
+    // 解析不了。日志模型是从 Rust 绑进来的，只能由 Rust 显式通知。
+    in property <int> log-tick: 0;
 
     // ---- 回调（Rust 侧实现）----
     callback pick-page(int);
@@ -660,35 +755,18 @@ export component MainWindow inherits Window {
                             checked: root.auto-refresh;
                             toggled => { root.auto-refresh = !root.auto-refresh; }
                         }
+                        CheckBox {
+                            text: "自动滚动";
+                            checked: root.auto-scroll;
+                            toggled => { root.auto-scroll = !root.auto-scroll; }
+                        }
                         Button { text: "清空"; clicked => { root.clear-logs(); } }
                     }
 
-                    Rectangle {
-                        border-radius: 8px;
-                        background: Pal.card;
-                        border-width: 1px;
-                        border-color: Pal.border;
-                        ListView {
-                            padding: 8px;
-                            for r in root.logs: HorizontalLayout {
-                                spacing: 10px;
-                                alignment: start;
-                                Text {
-                                    text: r.time;
-                                    width: 82px;
-                                    color: Pal.text-dim;
-                                    font-size: 11px;
-                                    font-family: "Cascadia Mono";
-                                }
-                                Text {
-                                    text: r.level;
-                                    width: 46px;
-                                    color: r.level == "ERROR" ? Pal.danger : (r.level == "WARN" ? Pal.warn : Pal.text-dim);
-                                    font-size: 11px;
-                                }
-                                Text { text: r.text; color: Pal.text; font-size: 11px; wrap: word-wrap; }
-                            }
-                        }
+                    log-list := LogList {
+                        rows: root.logs;
+                        follow: root.auto-scroll;
+                        tick: root.log-tick;
                     }
                 }
 

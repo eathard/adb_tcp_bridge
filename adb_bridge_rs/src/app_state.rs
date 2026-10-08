@@ -77,6 +77,8 @@ pub struct AppState {
 
     /// 是否自动刷新（关掉后可暂停观察）
     pub auto_refresh: bool,
+    /// 是否自动滚动日志到最底部（关掉后可停下来翻历史日志）
+    pub auto_scroll: bool,
     /// 当前选中的页面
     pub page: usize,
 
@@ -103,6 +105,7 @@ impl Default for AppState {
             no_kill_port: false,
             debug_packets: false,
             auto_refresh: true,
+            auto_scroll: true,
             page: 0,
             sessions: Vec::new(),
             shutdown: Arc::new(AtomicBool::new(false)),

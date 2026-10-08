@@ -96,7 +96,7 @@ adb -s 172.16.0.106:15555 shell
 cargo test --release --offline
 ```
 
-66 项单元测试，其中 7 项是与 Python 版的**逐字节交叉校验**
+**93 项单元测试全绿**，其中 7 项是与 Python 版的**逐字节交叉校验**
 （基准由 `gen_python_vectors.py` 从 Python 源码导出）：
 
 ```bash
@@ -111,15 +111,40 @@ python gen_python_vectors.py   # 重新生成基准向量
 |---|---|
 | `consistency_test.py`（第一批 50 条） | **50/50 完全一致** |
 | `consistency_test2.py`（第二批 50 条） | **50/50 完全一致** |
-| `stress_test.py`（基础压测 12 项） | **12/12 通过**，吞吐 17 MB/s |
-| 30MB push/pull 端到端 MD5 | 源文件/设备端/回拉**三者一致**，push 23.5 MB/s |
-| 跨机：B 机经桥 vs A 机 USB 基线 | **50/50 完全一致** |
+| `stress_test.py`（基础压测 12 项） | **12/12 通过**，吞吐 17.6 MB/s（GUI 常开时） |
+| `stress_advanced_win.py`（进阶压测 6 项） | **6/6 通过**，30MB/50MB push-pull 的 MD5 均一致 |
+| 跨机 `bridge_check_b.py`（B 经桥访问只接 USB 的 C） | **16/16 通过** |
+| 20 分钟长时连接（`ping_stability_b.py`） | 1200/1200 往返，**0% 丢包**，通道零中断 |
 
 第二批覆盖：二进制边界、正则、Bash 高级语法、find/xargs、退出码透传、
 大流量流控（3MB stdout / 1MB 无换行字节流 / 20000 字符单行）。
 
 跨机比较需先归一化换行：A 上是 Rockchip ADB 31（CRLF），B 上是 ADB 34（LF），
 这是客户端版本差异，与桥无关。
+
+### 反复重启稳定性
+
+`restart_stability_a.py`（CLI 启停 + 跨机功能验证）、`restart_gui_a.py`
+（GUI 进程反复启停）、`kill_recovery_a.py`（`taskkill /F` 强杀后恢复）：
+
+| 维度 | 轮数 | 结果 |
+|---|---|---|
+| CLI 启停 + 跨机功能验证 | 30 | **30/30**，启动 0.51~2.72s、停止 <0.01s |
+| GUI 进程反复启停 | 15 | **15/15**，窗口出现 0.25~0.50s，无耗时漂移 |
+| 强杀恢复（`taskkill /F`） | 12 | **12/12**，强杀 ~1.0s 端口即释放、重启 0.5s 恢复 |
+| 配置持久化 | 8 | **8/8**，`config.json` 内容 MD5 全程一致 |
+
+**共 57 轮零失败。** 每轮都由电脑 B 经桥真实执行 `adb connect` + `get-state` + `shell`，
+不是只验证「端口起来了」。
+
+长时测试纪律（都踩过）：
+
+- `remote_test.py` 的 `exec_command` 硬编码 900秒超时，跑 20 分钟必被掐断。
+- 跑长任务用 `run_remote_bg.py`（`setsid nohup` 后台跑 + 结果文件），SSH 断开不影响远端。
+  单纯 `nohup ... &` 不够——子进程仍持有 SSH 通道 fd，paramiko 的 `read()` 会一直等通道关闭。
+- **`adb shell ping` 的 RTT 不是桥的性能**：ping 由设备发起，ICMP 不经过桥。
+  它验证的是「adb 通道长时间零中断」，转发性能看压测的 MB/s 与大文件 push-pull。
+
 
 ## 图形界面
 
@@ -130,7 +155,8 @@ python gen_python_vectors.py   # 重新生成基准向量
 | **Slint**（推荐） | 声明式保留模式 | `cargo build --release --features slint-ui` | `adb_bridge_slint.exe` |
 | egui（旧） | 即时模式 | `cargo build --release --features gui` | `adb_bridge_rs_gui.exe` |
 
-Slint 版界面描述在 `ui/main.slint`，业务逻辑在 `src/slint_ui.rs`，
+Slint 版界面描述在 `ui/main.slint`（6 个页面：控制台 / 会话 / 运行日志 /
+参数设置 / 诊断工具 / 关于软件），业务逻辑在 `src/slint_ui.rs`，
 两者通过属性与回调解耦，**桥核心一行都不涉及界面**。
 
 ### 为什么有两套
@@ -140,16 +166,92 @@ HTML 原型有困难；Slint 是声明式保留模式，有专门的渲染引擎
 视觉表现力更强，且只在数据变化时重绘，性能上同样是加分项。
 因此界面迁移到 Slint，egui 版保留以便回退对比（`src/gui.rs` 未删除）。
 
+### 界面实现的四条硬约束
+
+1. **std-widgets 控件走全局 `Palette`，不认我们自定义的 `Pal`**。
+   自绘 `Text` 显式写 `color: Pal.text` 没问题，但 `CheckBox` / `LineEdit` /
+   `Button` 走 `FluentPalette.foreground`，跟随 `Palette.color-scheme`。
+   而 `Palette` 的 12 个 brush 属性在 Slint 1.16 里**全是只读**，唯一可写的是
+   `color-scheme`——只能整体切明暗模式，无法逐项赋色：
+
+   ```slint
+   export component MainWindow inherits Window {
+       init => { Palette.color-scheme = ColorScheme.dark; }
+   }
+   ```
+
+2. **`alignment` 只管主轴**，交叉轴上非拉伸子元素一律左对齐。圆形节点、图标、
+   竖线、胶囊标签要落在中轴上，得用左右两段 `horizontal-stretch: 1` 的空
+   Rectangle 夹住。
+
+3. **自定义组件作为 HorizontalLayout 子元素会被拉伸**到整个容器宽度，组件内部
+   写死的 `width` 失效——需显式加 `horizontal-stretch: 0`。
+
+4. **`.slint` 语法错误 4 秒就报出来，Rust 错误要 5 分钟**。调界面时值得先故意
+   编译一次清语法错误。这个版本没有 `RowLayout` / `ColumnLayout`，
+   只有 `HorizontalLayout` / `VerticalLayout`。
+
+### 日志列表的滚动：必须用 ListView，不要自己拼 Flickable
+
+日志页要「自动滚动到最底部」，**正确做法是标准 `ListView` + 一个定时器驱动
+`viewport-y`**。ListView 自带滚动条与滚轮处理，不要用Flickable/ScrollView
+自绘——那套会同时丢掉滚动条、丢掉滚轮，还让自动滚动完全失效。
+
+根因在Slint 源码 `internal/compiler/passes/flickable.rs`（约185 行）：
+计算 `viewport-height` 时会 `.filter(|x| x.borrow().repeated.is_none())`
+**跳过 `for` 循环产生的子元素**，且只统计类型是 layout 的直接子元素。
+若把 `for` 循环包在 `TouchArea` 里，Flickable 的直接子元素就不是 layout，
+于是 `viewport-height == height`，可滚动距离恒为 0——自动滚动每次都把列表
+**拽回顶部**，表现为「勾了也没用」。
+
+滚动方向约定（来自 `fluent/scrollview.slint` 的 scrollbar）：**向下滚是往负方向**，
+`0` 是顶、`-(viewport-height - visible-height)` 是底。写反了列表会往上跑。
+
+另外两个细节：
+
+- **只在 tick 变化时滚**。定时器无条件每 100ms 推到底，会把用户正在翻的
+  历史日志反复拽回（表现为「滚太快、日志一行行被顶没」）。tick 由 Rust 侧在
+  日志内容**真的变化**时递增（`rows_changed`）。
+- **不要用一次性 Timer + `restart()`**：`restart()` 只重置计时，不会把
+  `running` 从 false 拉起来，Timer 根本不触发。保持 `running: true` 的重复
+  Timer，用「tick 是否变化」当触发条件。
+
 ### 本机构建 Slint 的两个前提
 
-1. **必须用 crates.io 镜像**：本机直连下载 `.crate` 稳定超时；
-   cargo 走本机代理又会拿到 502。镜像配置见 `.cargo/config.toml`。
-2. **必须关闭 HTTP/2 多路复用**：同一代理下 `CARGO_HTTP_MULTIPLEXING=false`
-   才不会 502（已写进配置文件与 `build-slint.bat`）。
+1. **cargo 一律加 `--offline`**。本机 588 个依赖已全部在缓存里，联网反而会卡在
+   `index.crates.io` 响应上（历史上反复重试失败的真正原因，就是没加 `--offline`
+   而 cargo 在干等网络）。
+2. Slint 依赖通过 **path 指向本机源码检出** `D:/slint-ui/slint`（含已编译产物），
+   避免重复编译上千个 crate。**换机器或发布时**，把 `Cargo.toml` 里两行改成版本号：
+   `slint = "1.16"` / `slint-build = "1.16"`。
 
-Slint 依赖通过 **path 指向本机源码检出** `D:/slint-ui/slint`（含已编译产物），
-避免重复下载上千个 crate。**换机器或发布时，把 Cargo.toml 里两行改成版本号**：
-`slint = "1.16"` / `slint-build = "1.16"`。
+已禁用 `accessibility` 特性（依赖数 1190 → 588）。首次编译约 16 分钟，
+之后增量 4~5 分钟。
+
+### 测 Windows GUI 的三个硬约束
+
+Slint 是整窗自绘，**Win32 枚举不到子控件句柄**，只能按屏幕坐标点击，因此：
+
+1. **点击/截图前必须 `SetProcessDpiAwareness(2)`**。本机 2560×1600 / 缩放 150%，
+   不设则坐标被虚拟化，出现「假布局 bug」。
+2. **`SetForegroundWindow` 常被前台锁定策略拦掉**，点击会落到别的窗口
+   （曾误点到 IDE 的输入框）。用 `SetWindowPos(HWND_TOPMOST)` 强制置顶。
+   `ui_click.py` 已处理这点。
+3. 坐标要从截图精确换算：真实像素 = 显示坐标 × (窗口像素宽 / 显示图宽) + 窗口原点。
+   目测常差 40~50px（按钮只有 46px 高），**点空了不报错，只会「没反应」**。
+
+配套工具（都在本目录）：
+
+| 脚本 | 用途 |
+|---|---|
+| `ui_click.py` | 按**窗口相对坐标**点击，可顺带截图（会强制置顶） |
+| `win_shot.py` | 截取窗口图像 |
+| `win_act.py` | 移动窗口到屏幕中央 |
+| `fw_allow.py` | 自动点掉 Win11 防火墙弹窗（`--xy X,Y` 或 `--wait N`） |
+
+> 防火墙弹窗的类名是 `Shell_SystemDialogProxy`，`GetWindowRect` 恒返回 0×0、
+> 枚举子窗口也找不到按钮（XAML 合成器绘制）。本机有管理员权限，更省事的办法是
+> 直接 `netsh advfirewall firewall add rule` 建好规则，弹窗就不再出现。
 
 ## 许可证
 
