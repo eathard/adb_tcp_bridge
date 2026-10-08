@@ -316,7 +316,9 @@ component TopoLink inherits Rectangle {
             Rectangle { horizontal-stretch: 1; }
         }
 
-        // 实心三角：两段窄条居中 + 一段满宽，拼出对称箭头
+        // 实心三角箭头：**宽边在上、尖端在下**（指向下一个节点）。
+        // ⚠️ 顺序别搞反 —— 宽边在下方的话，尖端朝上，看起来就是箭头
+        //    往回指（实测就是这个错）。
         HorizontalLayout {
             spacing: 0;
             Rectangle { horizontal-stretch: 1; }
@@ -326,19 +328,19 @@ component TopoLink inherits Rectangle {
                 VerticalLayout {
                     spacing: 0;
                     alignment: center;
-                    HorizontalLayout {
-                        spacing: 0;
-                        Rectangle { horizontal-stretch: 1; }
-                        Rectangle { horizontal-stretch: 0; width: 2px; height: 2px; background: Pal.border; }
-                        Rectangle { horizontal-stretch: 1; }
-                    }
+                    Rectangle { width: 10px; height: 2px; background: Pal.border; }
                     HorizontalLayout {
                         spacing: 0;
                         Rectangle { horizontal-stretch: 1; }
                         Rectangle { horizontal-stretch: 0; width: 6px; height: 2px; background: Pal.border; }
                         Rectangle { horizontal-stretch: 1; }
                     }
-                    Rectangle { width: 10px; height: 2px; background: Pal.border; }
+                    HorizontalLayout {
+                        spacing: 0;
+                        Rectangle { horizontal-stretch: 1; }
+                        Rectangle { horizontal-stretch: 0; width: 2px; height: 2px; background: Pal.border; }
+                        Rectangle { horizontal-stretch: 1; }
+                    }
                 }
             }
             Rectangle { horizontal-stretch: 1; }
