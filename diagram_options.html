@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>框图优化方案对比</title>
+<style>
+  :root{
+    --bg:#14171d; --panel:#1a1e26; --card:#21262f; --card-hi:#272d38;
+    --border:#2e3542; --text:#e6e9ef; --dim:#98a2b6;
+    --accent:#4c8dff; --ok:#3ecf8e; --warn:#f0b429; --danger:#f0554d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#0e1116;color:var(--text);
+    font:14px/1.7 "Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    padding:30px;display:flex;gap:26px;justify-content:center;flex-wrap:wrap
+  }
+  .panel{width:560px;background:var(--bg);border:1px solid var(--border);
+         border-radius:10px;overflow:hidden}
+  .head{padding:14px 18px;border-bottom:1px solid var(--border);font-size:15px;font-weight:600}
+  .head small{display:block;color:var(--dim);font-size:12px;font-weight:400;margin-top:3px}
+  .body{padding:24px 20px;display:flex;flex-direction:column;align-items:center}
+
+  /* ---------- 方案 A：左侧色条卡片 ---------- */
+  .nodeA{
+    width:400px;display:flex;align-items:stretch;gap:12px;
+    background:var(--card);border:1px solid var(--border);
+    border-radius:10px;padding:12px 16px 12px 0;
+  }
+  .nodeA .bar{width:4px;border-radius:2px;background:var(--accent);flex:none}
+  .nodeA.hl{background:var(--card-hi);border-color:var(--accent)}
+  .nodeA .tx{flex:1}
+  .nodeA .t{font-size:14px;font-weight:600}
+  .nodeA .s{font-size:12px;color:var(--dim);margin-top:1px}
+  .linkA{height:44px;display:flex;align-items:center;justify-content:center;position:relative}
+  .linkA .ln{width:1px;height:26px;background:var(--border);position:relative}
+  .linkA .ln::after{
+    content:"";position:absolute;left:50%;top:26px;transform:translateX(-50%);
+    border-left:5px solid transparent;border-right:5px solid transparent;
+    border-top:7px solid var(--border)
+  }
+  .linkA .lb{position:absolute;left:calc(50% + 14px);top:50%;transform:translateY(-50%);
+    font-size:11px;color:var(--dim);white-space:nowrap}
+
+  /* ---------- 方案 B：圆形图标节点 ---------- */
+  .nodeB{display:flex;flex-direction:column;align-items:center;width:240px}
+  .circle{
+    width:56px;height:56px;border-radius:50%;background:var(--card);
+    border:2px solid var(--border);display:grid;place-items:center
+  }
+  .nodeB.hl .circle{border-color:var(--accent);background:#1b2534}
+  .nodeB .t{font-size:14px;font-weight:600;margin-top:8px}
+  .nodeB .s{font-size:12px;color:var(--dim)}
+  .linkB{height:58px;display:flex;align-items:center;justify-content:center;position:relative}
+  .linkB .ln{width:1px;height:40px;background:var(--border);position:relative}
+  .linkB .ln::after{
+    content:"";position:absolute;left:50%;top:40px;transform:translateX(-50%);
+    border-left:5px solid transparent;border-right:5px solid transparent;
+    border-top:7px solid var(--border)
+  }
+  .linkB .lb{position:absolute;left:calc(50% + 16px);top:50%;transform:translateY(-50%);
+    font-size:11px;color:var(--dim);white-space:nowrap;
+    background:var(--bg);padding:2px 8px;border-radius:9px;border:1px solid var(--border)}
+  .ic{width:26px;height:20px;border:2px solid var(--text);border-radius:2px;position:relative}
+  .ic::after{content:"";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);
+    width:10px;height:2px;background:var(--text)}
+  .chip{width:22px;height:22px;border:2px solid var(--text);border-radius:3px;position:relative}
+  .chip::before,.chip::after{
+    content:"";position:absolute;left:50%;transform:translateX(-50%);background:var(--text)}
+  .chip::before{width:2px;height:5px;top:-7px;box-shadow:-7px 0 0 var(--text),7px 0 0 var(--text)}
+  .chip::after{width:2px;height:5px;bottom:-7px;box-shadow:-7px 0 0 var(--text),7px 0 0 var(--text)}
+  .note{max-width:560px;background:var(--card);border:1px solid var(--border);
+        border-radius:10px;padding:16px 18px;font-size:13px;color:var(--dim);height:fit-content}
+  .note b{color:var(--text)}
+  .note code{background:#0d1015;border:1px solid var(--border);border-radius:4px;
+             padding:1px 5px;color:var(--accent);font:12px Consolas,monospace}
+  .note .w{color:var(--warn)}
+</style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="head">方案 A：左侧色条卡片
+      <small>改动最小 · 矩形+Text 全都能画 · 信息密度高</small></div>
+    <div class="body">
+      <div class="nodeA">
+        <div class="bar" style="background:var(--accent)"></div>
+        <div class="tx"><div class="t">电脑 B</div><div class="s">用 adb 命令操作</div></div>
+      </div>
+      <div class="linkA"><div class="ln"></div><span class="lb">TCP 局域网</span></div>
+      <div class="nodeA hl">
+        <div class="bar" style="background:var(--ok)"></div>
+        <div class="tx"><div class="t">电脑 A（本程序）</div><div class="s">设备通过 USB 接在这里</div></div>
+      </div>
+      <div class="linkA"><div class="ln"></div><span class="lb">USB</span></div>
+      <div class="nodeA">
+        <div class="bar" style="background:var(--warn)"></div>
+        <div class="tx"><div class="t">设备 C</div><div class="s">无需改动、无需 root</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="head">方案 B：圆形图标节点
+      <small>更像「拓扑图」· 图形更精致 · 用几何图形画设备图标</small></div>
+    <div class="body">
+      <div class="nodeB">
+        <div class="circle"><div class="ic"></div></div>
+        <div class="t">电脑 B</div>
+        <div class="s">用 adb 命令操作</div>
+      </div>
+      <div class="linkB"><div class="ln"></div><span class="lb">TCP 局域网</span></div>
+      <div class="nodeB hl">
+        <div class="circle"><div class="ic"></div></div>
+        <div class="t">电脑 A（本程序）</div>
+        <div class="s">设备通过 USB 接在这里</div>
+      </div>
+      <div class="linkB"><div class="ln"></div><span class="lb">USB</span></div>
+      <div class="nodeB">
+        <div class="circle"><div class="chip"></div></div>
+        <div class="t">设备 C</div>
+        <div class="s">无需改动、无需 root</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b style="color:var(--text)">为什么没有 SVG 方案</b><br><br>
+    Slint 的 SVG 渲染走 <code>usvg</code>，而它的
+    <code>Options::default()</code> 用的是<b class="w">空的 fontdb</b>
+    （<code>fontdb::Database::new()</code>，没有加载任何系统字体）。
+    所以 SVG 里的 <code>&lt;text&gt;</code> 因为找不到字体<b class="w">完全不渲染</b> ——
+    「电脑 B」「USB」这些字一个都画不出来。<br><br>
+    结论：走 SVG 的话文字仍然得用 Slint 的 <code>Text</code> 叠上去、
+    还得跟图形精确对位，比现在更麻烦。两种方案里
+    <b>方案 B 的图标用几何图形就能拼出来</b>（显示器=圆角矩形+底座，芯片=矩形+引脚），
+    不需要任何图片资源。
+  </div>
+
+</body>
+</html>

@@ -126,24 +126,123 @@ component SectionTitle inherits Text {
     color: Pal.text;
 }
 
-// 「关于软件」页拓扑里的一个节点框。
-// highlight=true 用于强调中间那一台（跑桥的电脑 A）。
-component TopoNode inherits Rectangle {
+// ── 「关于软件」页的拓扑图组件 ──
+//
+// 为什么全部用几何图形拼、而不是 SVG：
+// Slint 的 SVG 渲染走 usvg，其 Options::default() 里 fontdb 是**空的**
+// （fontdb::Database::new()，没加载任何系统字体），所以 SVG 里的 <text>
+// 一个字都渲染不出来。要显示中文只能回到 Slint 的 Text 叠字，反而更麻烦。
+// 同样地，Rectangle 没有 rotation 属性（只有 ImageItem 有 rotation-angle），
+// 所以箭头是几段递增横条堆出来的实心三角。
+
+// 显示器图标：屏幕（描边矩形）+ 底座横条
+component IconMonitor inherits Rectangle {
+    in property <color> tint: Pal.text;
+    background: transparent;
+    width: 30px;
+    height: 22px;
+    VerticalLayout {
+        spacing: 0;
+        alignment: center;
+        Rectangle {
+            width: 26px;
+            height: 15px;
+            border-width: 2px;
+            border-color: root.tint;
+            border-radius: 2px;
+            background: transparent;
+        }
+        Rectangle { width: 10px; height: 2px; background: root.tint; }
+    }
+}
+
+// 芯片图标：上下各三根引脚 + 中间主体
+component IconChip inherits Rectangle {
+    in property <color> tint: Pal.text;
+    background: transparent;
+    width: 30px;
+    height: 28px;
+    VerticalLayout {
+        spacing: 1px;
+        alignment: center;
+        HorizontalLayout {
+            spacing: 5px;
+            // horizontal-stretch: 0 —— HorizontalLayout 默认会把子元素横向拉伸，
+            // 不显式关掉的话三根引脚会变成三条大色块
+            Rectangle { horizontal-stretch: 0; width: 2px; height: 4px; background: root.tint; }
+            Rectangle { horizontal-stretch: 0; width: 2px; height: 4px; background: root.tint; }
+            Rectangle { horizontal-stretch: 0; width: 2px; height: 4px; background: root.tint; }
+        }
+        Rectangle {
+            width: 22px;
+            height: 17px;
+            border-width: 2px;
+            border-color: root.tint;
+            border-radius: 2px;
+            background: transparent;
+        }
+        HorizontalLayout {
+            spacing: 5px;
+            Rectangle { horizontal-stretch: 0; width: 2px; height: 4px; background: root.tint; }
+            Rectangle { horizontal-stretch: 0; width: 2px; height: 4px; background: root.tint; }
+            Rectangle { horizontal-stretch: 0; width: 2px; height: 4px; background: root.tint; }
+        }
+    }
+}
+
+// 拓扑节点：圆形 + 图标 + 标题 + 副标题
+// icon-kind: 0 = 显示器（电脑）���1 = 芯片（设备）
+// highlight=true 用于强调中间那台跑桥的电脑 A
+component TopoCircle inherits Rectangle {
+    in property <int> icon-kind: 0;
     in property <string> node-title: "";
     in property <string> node-sub: "";
     in property <bool> highlight: false;
 
-    width: 520px;
-    height: 58px;
-    border-radius: 8px;
-    border-width: 1px;
-    background: highlight ? Pal.card-hi : Pal.card;
-    border-color: highlight ? Pal.accent : Pal.border;
+    width: 240px;
+    height: 98px;
+    background: transparent;
+    border-width: 0;
 
-    VerticalLayout {
-        padding: 8px;
-        spacing: 1px;
+VerticalLayout {
+        spacing: 4px;
         alignment: center;
+        // 圆形外面夹两段弹性，否则它会**左对齐**在组件左边缘
+        // （Slint 的 layout 交叉轴：非拉伸子元素按 start 对齐）。
+        // 标题 Text 是 fill 的，靠 horizontal-alignment: center 居中，
+        // 所以圆和标题要各自用不同手段才对得上（实测偏差 82px）。
+        HorizontalLayout {
+            spacing: 0;
+            Rectangle { horizontal-stretch: 1; }
+            Rectangle {
+                horizontal-stretch: 0;
+                width: 56px;
+                height: 56px;
+                border-radius: 28px;
+                background: root.highlight ? #1b2534 : Pal.card;
+                border-width: 2px;
+                border-color: root.highlight ? Pal.accent : Pal.border;
+                // 图标在圆内居中 —— 同样用左右弹性夹住，
+                // 理由和上面一致（VerticalLayout 管不了交叉轴）
+                VerticalLayout {
+                    alignment: center;
+                    HorizontalLayout {
+                        spacing: 0;
+                        Rectangle { horizontal-stretch: 1; }
+                        if root.icon-kind == 0: IconMonitor {
+                            horizontal-stretch: 0;
+                            tint: root.highlight ? Pal.accent : Pal.text;
+                        }
+                        if root.icon-kind == 1: IconChip {
+                            horizontal-stretch: 0;
+                            tint: root.highlight ? Pal.accent : Pal.text;
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                    }
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+        }
         Text {
             text: root.node-title;
             color: Pal.text;
@@ -160,33 +259,90 @@ component TopoNode inherits Rectangle {
     }
 }
 
-// 拓扑里两个节点之间的连线：说明文字 + 竖线 + 向下箭头。
-// ⚠️ 箭头不能用「rotation 转 45° 的小方块」——Slint 里 rotation-angle
-//    只定义在 ImageItem 上，Rectangle 没有这个属性（实测编译直接报
-//    Unknown property rotation）。所以用几段递增的横条堆出实心三角，
-//    纯图形、不依赖字体是否有 ▽/↓ 这类符号字形。
-//    顺序是「文字 → 线 → 三角」，三角紧贴下一个节点，方向一目了然。
+// 连线：竖线 → 胶囊标签 → 继续竖线 → 实心三角箭头
+//
+// ⚠️ 两个 Slint 布局的坑都在这里踩过：
+//  1. 标签不能作为竖线的兄弟元素放在右侧。试过 [弹性-线-弹性-胶囊]，
+//     两段弹性等宽、胶囊又占掉一段，竖线偏离中轴约 47px。
+//     现在标签自己占满整行、背景是不透明页面底色，正好把线"遮断"。
+//  2. VerticalLayout/HorizontalLayout 的 alignment **只管主轴**，交叉轴上
+//     非拉伸子元素一律**左对齐**。所以竖线、胶囊、三角每一行都得用
+//     左右两段弹性夹一下才会落在中轴上（不夹的话竖线贴左边、标签偏 16px）。
 component TopoLink inherits Rectangle {
     in property <string> link-label: "";
 
-    width: 520px;
-    height: 44px;
+    width: 120px;
+    height: 62px;
     background: transparent;
     border-width: 0;
 
     VerticalLayout {
         spacing: 0;
         alignment: center;
-        Text {
-            text: root.link-label;
-            color: Pal.text-dim;
-            font-size: 11px;
+
+        HorizontalLayout {
+            spacing: 0;
+            Rectangle { horizontal-stretch: 1; }
+            Rectangle { horizontal-stretch: 0; width: 1px; height: 14px; background: Pal.border; }
+            Rectangle { horizontal-stretch: 1; }
         }
-        Rectangle { width: 2px; height: 12px; background: Pal.border; }
-        Rectangle { width: 3px; height: 2px; background: Pal.border; }
-        Rectangle { width: 7px; height: 2px; background: Pal.border; }
-        Rectangle { width: 11px; height: 2px; background: Pal.border; }
-        Rectangle { width: 15px; height: 2px; background: Pal.border; }
+
+        HorizontalLayout {
+            spacing: 0;
+            Rectangle { horizontal-stretch: 1; }
+            Rectangle {
+                horizontal-stretch: 0;
+                width: 88px;
+                height: 19px;
+                border-radius: 10px;
+                background: Pal.bg;
+                border-width: 1px;
+                border-color: Pal.border;
+                Text {
+                    text: root.link-label;
+                    color: Pal.text-dim;
+                    font-size: 11px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+        }
+
+        HorizontalLayout {
+            spacing: 0;
+            Rectangle { horizontal-stretch: 1; }
+            Rectangle { horizontal-stretch: 0; width: 1px; height: 14px; background: Pal.border; }
+            Rectangle { horizontal-stretch: 1; }
+        }
+
+        // 实心三角：两段窄条居中 + 一段满宽，拼出对称箭头
+        HorizontalLayout {
+            spacing: 0;
+            Rectangle { horizontal-stretch: 1; }
+            Rectangle {
+                horizontal-stretch: 0;
+                width: 10px;
+                VerticalLayout {
+                    spacing: 0;
+                    alignment: center;
+                    HorizontalLayout {
+                        spacing: 0;
+                        Rectangle { horizontal-stretch: 1; }
+                        Rectangle { horizontal-stretch: 0; width: 2px; height: 2px; background: Pal.border; }
+                        Rectangle { horizontal-stretch: 1; }
+                    }
+                    HorizontalLayout {
+                        spacing: 0;
+                        Rectangle { horizontal-stretch: 1; }
+                        Rectangle { horizontal-stretch: 0; width: 6px; height: 2px; background: Pal.border; }
+                        Rectangle { horizontal-stretch: 1; }
+                    }
+                    Rectangle { width: 10px; height: 2px; background: Pal.border; }
+                }
+            }
+            Rectangle { horizontal-stretch: 1; }
+        }
     }
 }
 
@@ -648,19 +804,19 @@ export component MainWindow inherits Window {
 
                         // ---- 拓扑：电脑 B →（TCP）电脑 A →（USB）设备 C ----
                         HorizontalLayout { alignment: center;
-                            TopoNode { node-title: "电脑 B"; node-sub: "用 adb 命令操作"; }
+                            TopoCircle { horizontal-stretch: 0; icon-kind: 0; node-title: "电脑 B"; node-sub: "用 adb 命令操作"; }
                         }
                         HorizontalLayout { alignment: center;
-                            TopoLink { link-label: "TCP 局域网"; }
+                            TopoLink { horizontal-stretch: 0; link-label: "TCP 局域网"; }
                         }
                         HorizontalLayout { alignment: center;
-                            TopoNode { node-title: "电脑 A（本程序）"; node-sub: "设备通过 USB 接在这里"; highlight: true; }
+                            TopoCircle { horizontal-stretch: 0; icon-kind: 0; node-title: "电脑 A（本程序）"; node-sub: "设备通过 USB 接在这里"; highlight: true; }
                         }
                         HorizontalLayout { alignment: center;
-                            TopoLink { link-label: "USB"; }
+                            TopoLink { horizontal-stretch: 0; link-label: "USB"; }
                         }
                         HorizontalLayout { alignment: center;
-                            TopoNode { node-title: "设备 C"; node-sub: "无需改动、无需 root"; }
+                            TopoCircle { horizontal-stretch: 0; icon-kind: 1; node-title: "设备 C"; node-sub: "无需改动、无需 root"; }
                         }
 
                         Rectangle {
