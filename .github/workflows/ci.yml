@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  rust:
+    name: Rust 构建与单元测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 cargo 目录
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+
+      # 开发机上 Slint 是 path 依赖（指向本机 D 盘源码检出），CI 上不存在，
+      # 必须先换成版本号才能解析依赖图。
+      - name: 把 Slint 的 path 依赖换成版本号
+        working-directory: rust
+        run: |
+          sed -i 's|path = "D:/slint-ui/slint/api/rs/slint"|version = "1.16"|' Cargo.toml
+          sed -i 's|path = "D:/slint-ui/slint/api/rs/build"|version = "1.16"|' Cargo.toml
+          grep -n 'version = "1.16"' Cargo.toml
+
+      # 只构建命令行版：它没有任何外部依赖，编译快。
+      # 图形界面版（--features slint-ui）需要下载上千个 crate，CI 上不跑。
+      - name: 构建命令行版
+        working-directory: rust
+        run: cargo build --release --verbose
+
+      - name: 单元测试
+        working-directory: rust
+        run: cargo test --release --verbose
+
+  python:
+    name: Python 语法检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 编译全部 Python 文件
+        run: python -m compileall -q python tests rust/tools
