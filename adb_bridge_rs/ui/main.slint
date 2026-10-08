@@ -141,6 +141,21 @@ export component MainWindow inherits Window {
     min-width: 940px;
     min-height: 620px;
 
+    // ⚠️ 必须显式声明深色模式，否则 std-widgets 控件的配色会跟我们的深色
+    //    面板打架：CheckBox 的文字色取自 `FluentPalette.foreground`
+    //    （见 Slint 源码 fluent/checkbox.slint），而它跟随全局 Palette 的
+    //    color-scheme。Palette 默认走浅色方案，于是深色文字落在 #1a1e26
+    //    的面板上，参数设置页那两个 CheckBox 几乎读不出来。
+    //
+    //    为什么不能像 Pal.bg 那样直接逐项设色：Palette 的 brush 属性
+    //    （background/foreground/…）全部是 `out` 只读，唯一 in-out 的
+    //    就是 color-scheme（它转发给 FluentPalette.color-scheme）。
+    //    所以「切深色」是唯一正解，顺带把 LineEdit / Button / ListView /
+    //    ScrollView 的配色也一起统一了。
+    init => {
+        Palette.color-scheme = ColorScheme.dark;
+    }
+
     // ---- 状态（Rust 侧写入）----
     in property <int> page: 0;
     in property <bool> running: false;
