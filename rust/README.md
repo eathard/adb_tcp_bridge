@@ -226,6 +226,10 @@ cargo build --release --offline                       # → adb_bridge_rs.exe（
 2. Slint 依赖通过 **path 指向本机源码检出** `D:/slint-ui/slint`（含已编译产物），
    避免重复编译上千个 crate。**换机器或发布时**，把 `Cargo.toml` 里两行改成版本号：
    `slint = "1.16"` / `slint-build = "1.16"`。
+   注意这一步**不是只有编译界面才需要**：`optional = true` 挡不住 path 依赖，
+   cargo 加载依赖 source 时路径不存在就会
+   `failed to load source for dependency`（exit 101），
+   连 `cargo build --release`（纯命令行版）一起失败。
 
 已禁用 `accessibility` 特性（依赖数 1190 → 588）。首次编译约 16 分钟，
 之后增量 4~5 分钟。

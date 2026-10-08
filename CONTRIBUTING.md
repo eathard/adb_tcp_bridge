@@ -46,7 +46,10 @@ cargo test  --release --offline     # 93 项单元测试
 > `path = "D:/slint-ui/slint/..."`，换机器直接编译会失败。
 > 把 `slint` 与 `slint-build` 两处改成版本号 `slint = "1.16"` /
 > `slint-build = "1.16"` 即可（首次编译需联网下载依赖，约 16 分钟）。
-> 只编译命令行版不受影响。
+> 只编译命令行版 **同样受影响**：`optional = true` 挡不住 path 依赖，cargo
+> 解析依赖图时就要加载每个依赖的 source，路径不存在直接报
+> `failed to load source for dependency`（exit 101）。
+> CI 的做法是先 sed 掉再构建，见 `.github/workflows/ci.yml`。
 
 ## 跑测试
 
